@@ -20,7 +20,6 @@ MAX_NEW_TOKENS = 64
 
 data, _ = get_lamp_dataset(dataset_num, dataset_split)
 prof_text_name, prof_gt_name, prof_prompt_name = get_profvar_names(dataset_num)
-# "LLAMA3-70B", "LLAMA-3.1-8B", "GEMMA-2-9B"
 LLMs = ["GEMMA-2-2B"]
 out_dir = f"res_pkls/D{dataset_num}/{dataset_split}/K{k}"
 if k != "0":

@@ -18,7 +18,11 @@ if dataset_num > 3:
     rouge = load("rouge")
     cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum"])
 else:
-    cols.extend(["acc", "f1_macro", "mae", "rmse"])
+    cols.append("acc")
+    if dataset_num in [2, 3]:
+        cols.append("f1")
+    if dataset_num == 3:
+        cols.extend(["mae", "rmse"])
 for file in all_res_files:
     with open(file, "r") as f:
         preds = json.load(f)["golds"]
@@ -41,22 +45,25 @@ for file in all_res_files:
         rouge_results["retriever"] = retriever
         all_res.append(rouge_results)
     else:
-        f1_macro = f1_score(out_gts, preds, average="macro")
-        mae = mean_absolute_error(list(map(int, out_gts)), list(map(int, preds)))
-        rmse = mean_squared_error(list(map(int, out_gts)), list(map(int, preds)))
         cor_pred = 0
         for i in range(len(out_gts)):
             if str(out_gts[i]) == str(preds[i]):
                 cor_pred += 1
         acc = cor_pred/len(out_gts)
-        all_res.append({
+        res_dict = {
             "k": k,
             "retriever": retriever,
             "acc": acc,
-            "f1_macro": f1_macro,
-            "mae": mae,
-            "rmse": rmse
-        })
+        }
+        if dataset_num in [2, 3]:
+            f1_macro = f1_score(out_gts, preds, average="macro")
+            res_dict["f1"] = f1_macro
+        if dataset_num == 3:
+            mae = mean_absolute_error(list(map(int, out_gts)), list(map(int, preds)))
+            rmse = mean_squared_error(list(map(int, out_gts)), list(map(int, preds)))
+            res_dict["mae"] = mae
+            res_dict["rmse"] = rmse
+        all_res.append(res_dict)
 df = pd.DataFrame(all_res)
 df["model"] = models
 df = df[cols]
