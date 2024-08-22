@@ -40,11 +40,15 @@ def get_lamp_dataset(dataset_num, mode="dev"):
     os.makedirs(lamp_dataset_path, exist_ok=True)
     data_path = os.path.join(lamp_dataset_path, f"lamp_{dataset_num}_{mode}_data.json")
     gts = None
+    if dataset_num == 2:
+        base_url = f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{dataset_num}/new/{mode}/{mode}"
+    else:
+        base_url = f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{dataset_num}/{mode}/{mode}"
     if os.path.exists(data_path):
         with open(data_path, "r") as f:
             data = json.load(f)
     else:
-        with urllib.request.urlopen(f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{dataset_num}/{mode}/{mode}_questions.json") as url:
+        with urllib.request.urlopen(f"{base_url}_questions.json") as url:
             data = json.load(url)
         with open(data_path, "w") as f:
             json.dump(data, f)
@@ -54,7 +58,7 @@ def get_lamp_dataset(dataset_num, mode="dev"):
             with open(gts_path, "r") as f:
                 gts = json.load(f)
         else:
-            with urllib.request.urlopen(f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{dataset_num}/{mode}/{mode}_outputs.json") as url:
+            with urllib.request.urlopen(f"{base_url}_outputs.json") as url:
                 gts = json.load(url)["golds"]
             with open(gts_path, "w") as f:
                 json.dump(gts, f)
@@ -66,9 +70,9 @@ def get_profvar_names(dataset_num):
         prof_text_name = "abstract"
         prof_prompt_name = "abstract"
     elif dataset_num == 2:
-        prof_gt_name = "category"
-        prof_text_name = "text"
-        prof_prompt_name = "article"        
+        prof_gt_name = "tag"
+        prof_text_name = "description"
+        prof_prompt_name = "description"        
     elif dataset_num == 3:
         prof_gt_name = "score"
         prof_text_name = "text"
@@ -100,8 +104,8 @@ def create_retr_data(data, dataset_num=5):
         elif dataset_num  == 1:
             queries.append(sample["input"].strip())
         elif dataset_num == 2:
-            text_idx = sample["input"].find("article:") + 1
-            queries.append(sample["input"][text_idx+len("article:"):].strip())
+            text_idx = sample["input"].find("description:") + 1
+            queries.append(sample["input"][text_idx+len("description:"):].strip())
         if dataset_num != 7:
             profile_gts.append([p[prof_gt_name] for p in sample["profile"]])
         profile_text.append([p[prof_text_name] for p in sample["profile"]])

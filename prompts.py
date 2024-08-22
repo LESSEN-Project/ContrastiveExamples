@@ -25,25 +25,25 @@ def lamp_prompt(dataset, prof_text, examples=None):
     elif dataset == 2:
         if examples:
             return [
-                {"role": "user", "content": strip_all(f"""Here are a couple of article-category pairs.
+                {"role": "user", "content": strip_all(f"""Here are a couple of movie description-tag pairs.
                                                             <EXAMPLES>
                                                             {examples}
                                                             </EXAMPLES>
-                                                            With the given examples, choose the correct category for the following article between these categories: 
-                                                            [women, religion, politics, style & beauty, entertainment, culture & arts, sports, science & technology, travel, business, crime, education, healthy living, parents, food & drink]
-                                                            Only output the response of the task and nothing else.
-                                                            Article:
+                                                            With the given examples, choose the correct category tag for the following movie description between these tags: 
+                                                            [sci-fi, based on a book, comedy, action, twist ending, dystopia, dark comedy, classic, psychology, fantasy, romance, thought-provoking, social commentary, violence, true story]
+                                                            Only output the tag and nothing else.
+                                                            Description:
                                                             {prof_text}
-                                                            Category:""")}
+                                                            Tag:""")}
             ]
         else:
             return [
-                {"role": "user", "content": strip_all(f"""Choose the correct category for the following article between these categories:
-                                                            [women, religion, politics, style & beauty, entertainment, culture & arts, sports, science & technology, travel, business, crime, education, healthy living, parents, food & drink]
-                                                            Only output the category of the task and nothing else.
-                                                            Article:
+                {"role": "user", "content": strip_all(f"""Choose the correct category tag for the following movie description between these tags:
+                                                            [sci-fi, based on a book, comedy, action, twist ending, dystopia, dark comedy, classic, psychology, fantasy, romance, thought-provoking, social commentary, violence, true story]
+                                                            Only output the tag and nothing else.
+                                                            Description:
                                                             {prof_text}
-                                                            Category:""")}
+                                                            Tag:""")}
             ]
         
     elif dataset == 3:
