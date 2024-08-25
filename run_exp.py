@@ -8,34 +8,34 @@ import subprocess
 from models import LLM
 from utils import get_args, log_exp
 from prompts import get_prompt
-from datasets import get_lamp_ids
-from retriever import get_retr_data, get_retr_res, prepare_context
+from datasets import LampDataset, AmazonDataset
+from retriever import Retriever
+from personalize import get_context
 
 args = get_args()
-dataset = args.dataset
-if dataset.startswith("lamp"):
+if args.dataset.startswith("lamp"):
     dataset_name = "lamp"
-    dataset_params = {
-        "num": int(dataset.split("_")[1]),
-        "split": dataset.split("_")[-1]
-    }
-elif dataset.startswith("amazon"):
+    num = int(args.dataset.split("_")[1])
+    split = args.dataset.split("_")[-1]
+    dataset = LampDataset(num, split)
+elif args.dataset.startswith("amazon"):
     dataset_name = "amazon"
-    dataset_params = {
-        "year": int(dataset.split("_")[1]),
-        "category": dataset.split("_")[-1] 
-    }
+    year = int(args.dataset.split("_")[1])
+    category = "_".join(args.dataset.split("_")[2:])
+    dataset = AmazonDataset(category, year)
 method = args.method
 k = args.k
-retriever = args.retriever if k != 0 else None
+retriever_model = args.retriever if k != 0 else None
+retriever = Retriever(retriever_model)
+
 MAX_NEW_TOKENS = 64
 pred_path = "preds"
 os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
-    ids = get_lamp_ids(**dataset_params)    
+    ids = dataset.get_ids()    
 
 LLMs = ["GEMMA-2-2B", "LLAMA-3.1-8B"]
-print(f"Running experiments for the {dataset} using {method} method")
+print(f"Running experiments for {args.dataset} using {method}")
 sys.stdout.flush()
 for model_name in LLMs:
     exp_name = f"{dataset}_{model_name}_{method}_K{k}"
@@ -46,38 +46,39 @@ for model_name in LLMs:
     else:
         all_res = []
     print(model_name) 
-    queries, retr_texts, retr_gts = get_retr_data(dataset_name, **dataset_params)  
+    queries, retr_texts, retr_gts = dataset.get_retr_data()  
     if len(all_res) == len(queries):
         print("Experiment for this LLM is already concluded!")
         continue
     else:
-        llm = LLM(model_name=model_name, gen_params={"max_new_tokens": MAX_NEW_TOKENS})
-        print(subprocess.run("gpustat"))  
         queries = queries[len(all_res):]
         retr_texts = retr_texts[len(all_res):]
         retr_gts = retr_gts[len(all_res):]
     if k != "0":
-        retr_doc_idxs = get_retr_res(dataset, queries, retr_texts, retriever)
-        retr_doc_idxs = retr_doc_idxs[len(all_res):]   
+        _, retr_text_name, retr_gt_name = dataset.get_var_names()
+        retr_doc_idxs = retriever.get_retrieval_results(args.dataset, queries, retr_texts, retriever)
+        retr_doc_idxs = retr_doc_idxs[len(all_res):]  
+        all_context = get_context(retr_texts, retr_gts, retr_doc_idxs, k, retr_text_name, retr_gt_name) 
 
+    llm = LLM(model_name=model_name, gen_params={"max_new_tokens": MAX_NEW_TOKENS}) 
     print(f"Starting from sample no. {len(all_res)}")
     start_time = time.time()
-    sys.stdout.flush()
-
-    all_context = prepare_context(dataset_name, retr_texts, retr_gts, retr_doc_idxs, k, **dataset_params)
+    print(subprocess.run("gpustat")) 
+    sys.stdout.flush() 
 
     for i in range(len(queries)):
 
         query = queries[i]
-        context = all_context[i]
-        prompt = get_prompt(dataset_name, query, **dataset_params)
-        context = llm.prepare_context(prompt, context)    
-        prompt = get_prompt(dataset_name, query, **dataset_params, examples=context)
+        prompt = get_prompt(dataset_name, query, num)
+        if k != "0":
+            context = all_context[i]
+            context = llm.prepare_context(prompt, context)    
+            prompt = get_prompt(dataset_name, query, num, examples=context)
 
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
         end_bot_time = time.time()
-        id = ids[i]["id"] if dataset_name == "lamp" else i
+        id = ids[i] if dataset_name == "lamp" else i
 
         cur_iter_res = {
             "id": id,
@@ -93,7 +94,7 @@ for model_name in LLMs:
         if (i+1)%500==0 or (i+1)==len(queries):
             print(i)
             with open(pred_out_path, "w") as f:
-                task = f"LaMP_{dataset_params['num']}" if dataset_name == "lamp" else dataset          
+                task = f"LaMP_{num}" if dataset_name == "lamp" else dataset          
                 json.dump({
                     "task": task,
                     "golds": all_res

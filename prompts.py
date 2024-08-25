@@ -1,9 +1,24 @@
 def strip_all(text):
    return "\n".join([line.strip() for line in text.splitlines()])
 
-def get_prompt(dataset_name, query, examples=None, **dataset_params):
+def get_prompt(dataset_name, num, query, examples=None):
     if dataset_name == "lamp":
-        return _lamp_prompt(dataset_params["num"], query, examples)
+        return _lamp_prompt(num, query, examples)
+    elif dataset_name == "amazon":
+        return _amazon_prompt(query, examples)
+    
+def _amazon_prompt(query, examples):
+    return [
+        {"role": "user", "content": strip_all(f"""Here are a couple of product reviews of an amazon user:
+                                                    <EXAMPLES>
+                                                    {examples}
+                                                    </EXAMPLES>
+                                                    With the given examples, generate review for the given product purchased by the same user. Only output the review and nothing else.
+                                                    Product Name:
+                                                    {query}
+                                                    Review:
+                                                    """)}
+    ]
 
 def _lamp_prompt(dataset_num, query, examples):
     if dataset_num == 1:
