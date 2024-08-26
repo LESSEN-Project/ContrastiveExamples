@@ -9,6 +9,7 @@ from transformers import AutoTokenizer, DPRQuestionEncoder, DPRQuestionEncoderTo
 
 from contriever.src.contriever import Contriever
 
+
 class Retriever:
     def __init__(self, model: str = "bm25", device: str = "cuda:0"):
         self.model = model
@@ -75,5 +76,5 @@ class Retriever:
                 sorted_idxs = np.argsort(sim_scores)
                 if len(sorted_idxs) > 1:
                     sorted_idxs = sorted_idxs.squeeze()[::-1]
-                retr_doc_idxs.append(sorted_idxs.tolist())
+                retr_doc_idxs.append(sorted_idxs.tolist()[0])
         return retr_doc_idxs

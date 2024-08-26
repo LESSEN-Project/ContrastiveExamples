@@ -21,7 +21,7 @@ def log_exp(cur_iter, exp_name):
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="lamp_5_dev", type=str)
-    parser.add_argument("-m", "--method", default="vanilla", type=str)
+    parser.add_argument("-m", "--method", default="RAG", type=str)
     parser.add_argument("-k", "--k", default="3", type=str)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
     return parser.parse_args()

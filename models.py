@@ -133,6 +133,8 @@ class LLM:
     def prepare_context(self, prompt, context, chat_history=[]):
         if chat_history:
             chat_history = self.trunc_chat_history(chat_history)
+        if isinstance(prompt, str):
+            prompt = [{"role": "user", "content": prompt}]
         avail_space = self.get_avail_space(prompt + chat_history)   
         if avail_space:         
             while True:
