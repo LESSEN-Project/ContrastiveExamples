@@ -3,29 +3,56 @@ from typing import List, Dict
 def strip_all(text: str) -> str:
     return "\n".join(line.strip() for line in text.splitlines())
 
-def amazon_prompt() -> str:
-    return strip_all("""Here are a couple of product reviews of an amazon user:
+def amazon_prompts(method):
+    if method == "RAG":
+        return _RAG_amazon_prompt()
+    elif method == "CW_Map":
+        return _CW_amazon_prompt()
+
+def _RAG_amazon_prompt() -> str:
+    return strip_all("""Here are a couple of product reviews of an Amazon customer:
                   <EXAMPLES>
                   {examples}
                   </EXAMPLES>
-                  With the given examples, generate review for the given product purchased by the same user. Only output the review and nothing else.
+                  With the given examples, generate a review for the given product purchased by the customer. Only output the review and nothing else.
                   Product Name:
                   {query}
-                  Review:
-                  """)
+                  Review:""")
 
-def lamp_prompts(dataset_num: int) -> List[Dict[str, str]]:
-    lamp_prompts = {
-        1: _lamp_prompt_1,
-        2: _lamp_prompt_2,
-        3: _lamp_prompt_3,
-        4: _lamp_prompt_4,
-        5: _lamp_prompt_5,
-        7: _lamp_prompt_7
-    }
-    return lamp_prompts.get(dataset_num)()
+def _CW_amazon_prompt() -> str:
+    return strip_all("""Here is a list of words an Amazon customer uses frequently:
+                    {words}
+                    Looking at the words the customer uses frequently, generate a review for the given product purchased by the customer. Only output the review and nothing else.
+                    Product:
+                    {query}
+                    Review:""")
 
-def _lamp_prompt_1() -> str:
+def lamp_prompts(dataset_num: int, method: str) -> str:
+    if method == "RAG":
+        RAG_lamp_prompts = {
+            1: _RAG_lamp_prompt_1,
+            2: _RAG_lamp_prompt_2,
+            3: _RAG_lamp_prompt_3,
+            4: _RAG_lamp_prompt_4,
+            5: _RAG_lamp_prompt_5,
+            7: _RAG_lamp_prompt_7
+        }
+        return RAG_lamp_prompts.get(dataset_num)()
+    elif method == "CW_Map":
+        CW_lamp_prompts = {
+            5: _CW_lamp_prompt_5
+        }
+        return CW_lamp_prompts.get(dataset_num)()
+
+def _CW_lamp_prompt_5() -> str:
+    return strip_all("""Here is a list of words that an author uses frequently
+                    {words}
+                    Here is an abstract from the author:
+                    {query}
+                    Looking at the words the author uses, generate a title for the abstract. You can use other words besides the ones listed. Only output the title and nothing else.
+                    Title:""")
+
+def _RAG_lamp_prompt_1() -> str:
     return strip_all("""Here are a couple of abstract-title pairs of a scholar.
                     <EXAMPLES>
                     {examples}
@@ -35,7 +62,7 @@ def _lamp_prompt_1() -> str:
                     {query}
                     """)
 
-def _lamp_prompt_2() -> str:    
+def _RAG_lamp_prompt_2() -> str:    
     return strip_all("""Here are a couple of movie description-tag pairs.
                     <EXAMPLES>
                     {examples}
@@ -47,7 +74,7 @@ def _lamp_prompt_2() -> str:
                     {query}
                     Tag:""")
 
-def _lamp_prompt_3() -> str:
+def _RAG_lamp_prompt_3() -> str:
     return strip_all("""Here are a couple of review-rating pairs of a user. 
                     <EXAMPLES>
                     {examples}
@@ -57,7 +84,7 @@ def _lamp_prompt_3() -> str:
                     {query}
                     Score:""")
 
-def _lamp_prompt_4() -> str:
+def _RAG_lamp_prompt_4() -> str:
     return strip_all("""Here are a couple of article-title pairs of a user. 
                     <EXAMPLES>
                     {examples}
@@ -67,7 +94,7 @@ def _lamp_prompt_4() -> str:
                     {query}
                     Title:""")
 
-def _lamp_prompt_5() -> str:
+def _RAG_lamp_prompt_5() -> str:
     return strip_all("""Here are a couple of abstract-title pairs of a scholar:
                     <EXAMPLES>
                     {examples}
@@ -77,7 +104,7 @@ def _lamp_prompt_5() -> str:
                     {query}
                     Title:""")
 
-def _lamp_prompt_7() -> str:
+def _RAG_lamp_prompt_7() -> str:
     return strip_all("""Here are a couple of tweets of a person:
                     <EXAMPLES>
                     {examples}

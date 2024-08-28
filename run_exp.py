@@ -57,6 +57,7 @@ for model_name in LLMs:
         retr_gts = retr_gts[len(all_res):]
 
     all_context = personalizer.get_context(queries, retr_texts, retr_gts, k) 
+    all_context = all_context[len(all_res):]
     llm = LLM(model_name=model_name, gen_params={"max_new_tokens": MAX_NEW_TOKENS})
 
     print(f"Starting from sample no. {len(all_res)}")
@@ -66,14 +67,14 @@ for model_name in LLMs:
 
     for i in range(len(queries)):
 
-        query = queries[i]
-        prompt = dataset.get_prompt().format(query=query, examples="'")
-        
+        query = queries[i]        
         if all_context:
             context = all_context[i]
-            context = llm.prepare_context(prompt, context)    
-            prompt = dataset.get_prompt().format(query=query, examples=context)
-            prompt = [{"role": "user", "content": prompt}]
+            print(context)
+        else:
+            context = None
+        prompt = personalizer.prepare_prompt(args.method, query, context, llm)
+        prompt = [{"role": "user", "content": prompt}]
 
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)

@@ -1,5 +1,7 @@
 from typing import List, Union
 import re
+import os
+import json
 from abc import ABC, abstractmethod
 
 import numpy as np
@@ -8,44 +10,56 @@ import nltk
 from nltk import pos_tag
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords, wordnet
-from sentence_transformers import SentenceTransformer
 
 from utils import shuffle_lists
 
 class Personalize(ABC):
+    def __init__(self, dataset, retriever) -> None:
+        self.dataset = dataset
+        self.retriever = retriever
+        
     @abstractmethod
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
         pass
 
-class RAG(Personalize):
-    def __init__(self, dataset, retriever) -> None:
-        self.dataset = dataset
-        self.retriever = retriever
-
-    def prepare_retrieval_results(self, queries, retr_texts):
-        return self.retriever.get_retrieval_results(self.dataset.tag, queries, retr_texts)
-
-    def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
-        if k == "0":
-            return None
-        retr_doc_idxs = self.prepare_retrieval_results(queries, retr_texts)
+    def parse_k(self, k):
         skip_k = 0
         doc_k = k
-        _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
         if "_" in k:
             doc_k = k.split("_")[0]
             if "skip" in k:
-                skip_k = int(k[k.find("skip_")+len("skip_"):])
-        
+                skip_k = int(k[k.find("skip_")+len("skip_"):])  
+        return int(doc_k), skip_k
+
+class RAG(Personalize):
+    def __init__(self, dataset, retriever) -> None:
+        super().__init__(dataset, retriever)
+
+    def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
+        doc_k, skip_k = self.parse_k(k)
+        retr_path = "retrieval_res"
+        os.makedirs(retr_path, exist_ok=True)
+        file_path = os.path.join(retr_path, f"{self.dataset.tag}.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                all_retr_docs = json.load(f)
+                save = False
+        else:
+            save = True
+            all_retr_docs = []
         all_examples = []
-        for i, retr_docs in enumerate(retr_doc_idxs):
-            if "max" in k:
-                doc_k = len(retr_docs) - skip_k
+        _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
+        for i, query in enumerate(queries):
+            retr_text = retr_texts[i]
+            retr_gt = retr_gts[i]
+            if not save:
+                retr_docs = np.array(all_retr_docs[i])
             else:
-                doc_k = int(doc_k)
+                retr_docs = self.retriever.get_retrieval_results(query, retr_text)
+                all_retr_docs.append(retr_docs)
             
-            texts = [retr_texts[i][doc_id] for doc_id in retr_docs[skip_k: (doc_k+skip_k)]]
-            gts = [retr_gts[i][doc_id] for doc_id in retr_docs[skip_k: (doc_k+skip_k)]]
+            texts = [retr_text[doc_id] for doc_id in retr_docs[skip_k: (doc_k+skip_k)]]
+            gts = [retr_gt[doc_id] for doc_id in retr_docs[skip_k: (doc_k+skip_k)]]
             
             if k.endswith("shuffle"):
                 texts, gts = shuffle_lists(texts, gts)
@@ -61,14 +75,25 @@ class RAG(Personalize):
                     example = f"{retr_prompt_name.capitalize()}:\n{text}"
                 examples.append(example)
             all_examples.append(examples)
-        
+
+        if save:
+            with open(file_path, "w") as f:
+                all_retr_docs = [d.tolist() for d in all_retr_docs]
+                json.dump(all_retr_docs, f)
         return all_examples
+
+    def prepare_prompt(self, method, query, llm, examples=None):
+        init_prompt = self.dataset.get_prompt(method)
+        zero_shot = init_prompt.format(query=query, examples="")
+        if not examples:
+            return zero_shot
+        else:
+            context = llm.prepare_context(zero_shot, examples)    
+            return init_prompt.format(query=query, examples=context)
     
 class CW_Map(Personalize):
-    def __init__(self, dataset, retriever, model="all-MiniLM-L6-v2") -> None:
-        self.dataset = dataset
-        self.retriever = retriever
-        self.model = SentenceTransformer(model)
+    def __init__(self, dataset, retriever) -> None:
+        super().__init__(dataset, retriever)
         self.download_nltk()
 
     def download_nltk(self):
@@ -138,7 +163,7 @@ class CW_Map(Personalize):
                         context_sentences = " ".join(original_sentences[start_idx:end_idx])
                         
                         if context_sentences not in word_info[lemma]["sentences"]:
-                            embedding = self.model.encode(context_sentences)
+                            embedding = self.retriever._encode(context_sentences)
                             
                             word_info[lemma]["sentences"][context_sentences] = {
                                 "doc_id": doc_id,
@@ -165,30 +190,33 @@ class CW_Map(Personalize):
     def get_profile(self, retr_texts, retr_gts):
         return [f"{gt}: {text}" for text, gt in zip(retr_texts, retr_gts)]
     
-    def get_word_distances(self, queries, word_corpus):
+    def get_word_distances(self, query, word_corpus):
         word_embeds = []
         for word in word_corpus.keys():
             word_embeds.append(np.array([s["embedding"] for s in word_corpus[word]["sentences"]]).mean(axis=0, dtype=np.float32))
         word_embeds = np.array(word_embeds)
-        query_embeds = self.model.encode(queries)
-        similarities = self.model.similarity(query_embeds, np.array(word_embeds)).numpy().squeeze()
-        sorted_idxs = np.argsort(similarities)[::-1]
-        return similarities, sorted_idxs
+        return self.retriever.get_retrieval_results(query, word_embeds)
 
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
-        profile = self.get_profile(retr_texts, retr_gts)
-        word_corpus = word_corpus(profile)
-        similarities, sorted_idxs = self.get_word_distances(queries, word_corpus)
-        sorted_words = [word[:k] for word in sorted_idxs]
+
         words = []
-        for word in sorted_words:
-            words.append([list(word_corpus.values())[idx]["original_forms"] for idx in word])
+        for i, query in enumerate(queries):
+            profile = self.get_profile(retr_texts[i], retr_gts[i])
+            word_corpus = self.process_corpus(profile)
+            sorted_idxs = self.get_word_distances(query, word_corpus)
+            sorted_words = [list(word_corpus)[idx] for idx in sorted_idxs[:int(k)]]
+            words.append(sorted_words)
+        return words
 
+    def prepare_prompt(self, method, query, examples, llm):
+        init_prompt = self.dataset.get_prompt(method)
+        context = llm.prepare_context(init_prompt, examples) 
+        return init_prompt.format(query=query, words=context)
 
-def get_personalization_method(method: str, dataset, retriever, model="all-MiniLM-L6-v2") -> Personalize:
+def get_personalization_method(method: str, dataset, retriever) -> Personalize:
     if method == "RAG":
         return RAG(dataset, retriever)
     elif method == "CW_Map":
-        return CW_Map(dataset, retriever, model)
+        return CW_Map(dataset, retriever)
     else:
         raise ValueError(f"Unknown personalization method: {method}")
