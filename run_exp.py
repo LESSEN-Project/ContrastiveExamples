@@ -73,7 +73,7 @@ for model_name in LLMs:
             print(context)
         else:
             context = None
-        prompt = personalizer.prepare_prompt(args.method, query, context, llm)
+        prompt = personalizer.prepare_prompt(args.method, query, llm, context)
         prompt = [{"role": "user", "content": prompt}]
 
         start_bot_time = time.time()    

@@ -39,7 +39,7 @@ class RAG(Personalize):
         doc_k, skip_k = self.parse_k(k)
         retr_path = "retrieval_res"
         os.makedirs(retr_path, exist_ok=True)
-        file_path = os.path.join(retr_path, f"{self.dataset.tag}.json")
+        file_path = os.path.join(retr_path, f"{self.dataset.tag}_RAG.json")
         if os.path.exists(file_path):
             with open(file_path, "r") as f:
                 all_retr_docs = json.load(f)
@@ -198,17 +198,33 @@ class CW_Map(Personalize):
         return self.retriever.get_retrieval_results(query, word_embeds)
 
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
-
+        retr_path = "retrieval_res"
+        os.makedirs(retr_path, exist_ok=True)
+        file_path = os.path.join(retr_path, f"{self.dataset.tag}_CW_Map.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                all_idxs = json.load(f)
+                save = False
+        else:
+            save = True
+            all_idxs = []
         words = []
         for i, query in enumerate(queries):
             profile = self.get_profile(retr_texts[i], retr_gts[i])
             word_corpus = self.process_corpus(profile)
-            sorted_idxs = self.get_word_distances(query, word_corpus)
-            sorted_words = [list(word_corpus)[idx] for idx in sorted_idxs[:int(k)]]
-            words.append(sorted_words)
+            if not save:
+                sorted_idxs = all_idxs[i]
+            else:
+                sorted_idxs = self.get_word_distances(query, word_corpus)
+                all_idxs.append(sorted_idxs)
+            sorted_words = [list(word_corpus)[idx] for idx in sorted_idxs[:int(k)]]  
+            words.append(sorted_words)              
+        if save:
+            with open(file_path, "w") as f:
+                json.dump(all_idxs, f)
         return words
 
-    def prepare_prompt(self, method, query, examples, llm):
+    def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
         context = llm.prepare_context(init_prompt, examples) 
         return init_prompt.format(query=query, words=context)
