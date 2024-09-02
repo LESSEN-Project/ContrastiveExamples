@@ -84,5 +84,6 @@ def shuffle_lists(list1, list2):
    list2_shuffled = list(list2_shuffled)
    return list1_shuffled, list2_shuffled
 
-def normalize_scores(scores):
-    return (scores - np.min(scores)) / (np.max(scores) - np.min(scores))
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return (e_x/e_x.sum()).tolist()
