@@ -3,6 +3,7 @@ import os
 import json
 import random
 import re
+import numpy as np
 
 def log_exp(cur_iter, exp_name):
     os.makedirs("logs", exist_ok=True)
@@ -82,3 +83,6 @@ def shuffle_lists(list1, list2):
    list1_shuffled = list(list1_shuffled)
    list2_shuffled = list(list2_shuffled)
    return list1_shuffled, list2_shuffled
+
+def normalize_scores(scores):
+    return (scores - np.min(scores)) / (np.max(scores) - np.min(scores))

@@ -11,7 +11,7 @@ from nltk import pos_tag
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords, wordnet
 
-from utils import shuffle_lists
+from utils import shuffle_lists, normalize_scores
 
 class Personalize(ABC):
     def __init__(self, dataset, retriever) -> None:
@@ -37,11 +37,14 @@ class Personalize(ABC):
         file_path = os.path.join(self.save_loc, f"{self.dataset.tag}_{method}_{self.retriever.model}.json")
         if os.path.exists(file_path):
             with open(file_path, "r") as f:
-                all_idxs = json.load(f)
+                all_res = json.load(f)
+                all_similaries = all_res[0]
+                all_idxs = all_res[1]
         else:
             print("Retrieval results are not cached, starting from 0!")
+            all_similaries = []
             all_idxs = []
-        return all_idxs
+        return all_similaries, all_idxs
     
     def save_file(self, method, obj):
         file_path = os.path.join(self.save_loc, f"{self.dataset.tag}_{method}_{self.retriever.model}.json")
@@ -54,21 +57,22 @@ class RAG(Personalize):
 
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
         doc_k, skip_k = self.parse_k(k)
-        all_idxs = self.check_file("RAG")
-
+        all_similarities, all_idxs = self.check_file("RAG")
         all_examples = []
         _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
         for i, query in enumerate(queries):
             retr_text = retr_texts[i]
             retr_gt = retr_gts[i]
             if len(all_idxs) > i:
+                similarities = all_similarities[i]
                 sorted_idxs = np.array(all_idxs[i])
             else:
-                sorted_idxs = self.retriever.get_retrieval_results(query, retr_text)
+                similarities, sorted_idxs = self.retriever.get_retrieval_results(query, retr_text)
+                all_similarities.append(similarities.tolist())
                 all_idxs.append(sorted_idxs.tolist())
                 if ((i+1)%500 == 0) or (i+1 == len(queries)):
                     print(i)     
-                    self.save_file("RAG", all_idxs)
+                    self.save_file("RAG", (all_similarities, all_idxs))
             
             texts = [retr_text[doc_id] for doc_id in sorted_idxs[skip_k: (doc_k+skip_k)]]
             gts = [retr_gt[doc_id] for doc_id in sorted_idxs[skip_k: (doc_k+skip_k)]]
@@ -212,7 +216,13 @@ class CWMap(Personalize):
         return self.process_profile(retr_texts, retr_gts)
 
     def get_classes(self, retr_gts):
-            return list(set(retr_gts))
+            new_classes = []
+            classes = list(set(retr_gts))
+            for cls in classes:
+                cls_idxs = [i for i, gt in enumerate(retr_gts) if gt == cls]
+                if len(cls_idxs) >= 2:
+                    new_classes.append(cls)
+            return new_classes
     
     def get_class_distances(self, query, retr_texts, retr_gts):
         classes = self.get_classes(retr_gts)
@@ -229,37 +239,39 @@ class CWMap(Personalize):
         else:
             return self.get_word_distances(query, retr_texts, retr_gts)
         
-    def get_sorted_words(self, retr_texts, retr_gts, sorted_idxs):
+    def get_sorted_words(self, retr_texts, retr_gts, sorted_idxs, similarities=None):
         if self.dataset.task == "classification" and self.dataset.num != 1:
+            norm_sims = normalize_scores(similarities)
             classes = self.get_classes(retr_gts)
             return [classes[idx] for idx in sorted_idxs]
         else:
+            
             profile_words = self.get_profile_words(retr_texts, retr_gts)
             return [list(profile_words)[idx] for idx in sorted_idxs]  
 
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
 
-        all_idxs = self.check_file("CWMap")
+        all_similarities, all_idxs = self.check_file("CWMap")
         words = []
         for i, query in enumerate(queries):
-            print(i)
             if len(all_idxs) > i:
+                similarities = all_similarities[i]
                 sorted_idxs = all_idxs[i]
             else:
-                sorted_idxs = self.get_distances(query, retr_texts[i], retr_gts[i])
+                similarities, sorted_idxs = self.get_distances(query, retr_texts[i], retr_gts[i])
                 all_idxs.append(sorted_idxs.tolist())
+                all_similarities.append(similarities.tolist())
                 if ((i+1)%500 == 0) or (i+1 == len(queries)):
                     print(i)     
-                    self.save_file("CWMap", all_idxs)
-            sorted_words = self.get_sorted_words(retr_texts[i], retr_gts[i], sorted_idxs[:int(k)])
-            print(sorted_words)
+                    self.save_file("CWMap", (all_similarities, all_idxs))
+            sorted_words = self.get_sorted_words(retr_texts[i], retr_gts[i], sorted_idxs[:int(k)], similarities[:int(k)])
             words.append(sorted_words)         
         return words
 
     def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
         context = llm.prepare_context(init_prompt, examples) 
-        return init_prompt.format(query=query, words=context)
+        return init_prompt.format(query=query, words=context.splitlines())
 
 
 class Comb(Personalize):

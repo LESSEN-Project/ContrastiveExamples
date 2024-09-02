@@ -1,5 +1,3 @@
-from typing import List, Dict
-
 def strip_all(text: str) -> str:
     return "\n".join(line.strip() for line in text.splitlines())
 
@@ -59,8 +57,8 @@ def _CW_lamp_prompt_1() -> str:
 
 def _CW_lamp_prompt_2() -> str:
     return strip_all("""Here is a movie description:
-                     {query}
-                     Derived from the previous description-tag pairs of the user, here is the list of tags that are most suitable for the description sorted from the most suitable to the least:
+                    {query}
+                    Derived from the previous description-tag pairs of the user, here is the list of tags that are most suitable for the description sorted from the most suitable to the least:
                     {words}
                     Looking at the description and user's previous interactions, choose the correct category tag for the description between these tags:
                     [sci-fi, based on a book, comedy, action, twist ending, dystopia, dark comedy, classic, psychology, fantasy, romance, thought-provoking, social commentary, violence, true story]
@@ -69,8 +67,8 @@ def _CW_lamp_prompt_2() -> str:
 
 def _CW_lamp_prompt_3() -> str:
     return strip_all("""Here is a review:
-                     {query}
-                     Derived from the previous review-score pairs of the user, here is the list of scores that are most suitable for the description sorted from the most suitable to the least:
+                    {query}
+                    Derived from the previous review-score pairs of the user, here is the list of scores that are most suitable for the description sorted from the most suitable to the least:
                     {words}
                     Looking at the review and user's previous interactions, give a score between [1, 2, 3, 4, 5] to the review. Only output the score and nothing else.
                     Score:""")

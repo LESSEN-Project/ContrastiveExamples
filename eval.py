@@ -24,7 +24,7 @@ out_gts = dataset.get_gt()
 out_gts = [p["output"] for p in out_gts]
 all_res = []
 models = []
-cols = ["model", "method", "retriever", "k"]
+cols = ["model", "method", "retriever", "K"]
 if dataset.task == "generation":
     rouge = load("rouge")
     cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum"])
@@ -38,7 +38,7 @@ else:
 for file in os.listdir(preds_dir):
     if file.startswith(args.dataset):
         retriever = file.split("_")[-1]
-        k = file.split("_")[-2]
+        k = file.split("_")[-2][1:]
         method = file.split("_")[-3]
         model = file.split("_")[-4]
 
@@ -54,7 +54,7 @@ for file in os.listdir(preds_dir):
             "model": model,
             "method": method,
             "retriever": retriever,
-            "k": k
+            "K": k
         }
         if dataset.task == "generation":
             rouge_results = rouge.compute(predictions=preds, references=out_gts)
@@ -79,4 +79,4 @@ for file in os.listdir(preds_dir):
 df = pd.DataFrame(all_res)
 df = df[cols]
 df = df.round(dict([(c, 4) for c in df.columns if df[c].dtype == "float64"]))
-df.to_csv(f"eval_{args.dataset}_{args.method}.csv", index=False)
+df.to_csv(f"eval_{args.dataset}.csv", index=False)
