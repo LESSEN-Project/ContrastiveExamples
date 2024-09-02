@@ -28,9 +28,10 @@ class Retriever:
             return docs
 
     def _neural_retrieval(self, queries: List[str], docs: List[str]):
-
         query_embeds = self._encode(queries)
         doc_embeds = self._encode(docs)
-        similarities = self.retr_model.similarity(query_embeds, doc_embeds).numpy().squeeze()
-        sorted_idxs = np.argsort(similarities)[::-1] 
+        similarities = self.retr_model.similarity(query_embeds, doc_embeds).numpy().squeeze().tolist()
+        sorted_idxs = np.argsort(similarities)[::-1].tolist()
+        if isinstance(similarities, float):
+            similarities = [similarities]
         return similarities, sorted_idxs
