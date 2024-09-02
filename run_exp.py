@@ -18,7 +18,6 @@ if args.dataset.startswith("lamp"):
     split = args.dataset.split("_")[-1]
     dataset = LampDataset(num, split)
 elif args.dataset.startswith("amazon"):
-    num = None
     dataset_name = "amazon"
     year = int(args.dataset.split("_")[-1])
     category = "_".join(args.dataset.split("_")[1:-1])
@@ -39,7 +38,7 @@ LLMs = ["GEMMA-2-2B", "LLAMA-3.1-8B"]
 print(f"Running experiments for {args.dataset} using {args.method}")
 sys.stdout.flush()
 for model_name in LLMs:
-    exp_name = f"{args.dataset}_{model_name}_{args.method}_K{k}"
+    exp_name = f"{args.dataset}_{model_name}_{args.method}_K{k}_{retriever_model}"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -70,7 +69,6 @@ for model_name in LLMs:
         query = queries[i]        
         if all_context:
             context = all_context[i]
-            print(context)
         else:
             context = None
         prompt = personalizer.prepare_prompt(args.method, query, llm, context)
@@ -95,7 +93,7 @@ for model_name in LLMs:
         if (i+1)%500==0 or (i+1)==len(queries):
             print(i)
             with open(pred_out_path, "w") as f:
-                task = f"LaMP_{num}" if dataset_name == "lamp" else dataset          
+                task = f"LaMP_{num}" if dataset_name == "lamp" else args.dataset          
                 json.dump({
                     "task": task,
                     "golds": all_res

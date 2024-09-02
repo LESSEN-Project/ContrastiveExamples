@@ -1,71 +1,82 @@
 import json
 import pandas as pd
+import os
 from evaluate import load
 from sklearn.metrics import f1_score, mean_absolute_error, mean_squared_error
 
-from utils import get_lamp_args, get_lamp_dataset, list_files_in_directory
+from utils import get_args
+from exp_datasets import LampDataset, AmazonDataset
 
-args = get_lamp_args()
-dataset_num = args.dataset_num
-dataset_split = args.dataset_split
-all_res_files = sorted(list_files_in_directory(f"res_pkls/D{dataset_num}/{dataset_split}"))
-data, out_gts = get_lamp_dataset(dataset_num)
+args = get_args()
+if args.dataset.startswith("lamp"):
+    dataset_name = "lamp"
+    num = int(args.dataset.split("_")[1])
+    split = args.dataset.split("_")[-1]
+    dataset = LampDataset(num, split)
+elif args.dataset.startswith("amazon"):
+    dataset_name = "amazon"
+    year = int(args.dataset.split("_")[-1])
+    category = "_".join(args.dataset.split("_")[1:-1])
+    dataset = AmazonDataset(category, year)
+
+preds_dir = "preds"
+out_gts = dataset.get_gt()
 out_gts = [p["output"] for p in out_gts]
 all_res = []
 models = []
-cols = ["model", "retriever", "k"]
-if dataset_num > 3:
+cols = ["model", "method", "retriever", "k"]
+if dataset.task == "generation":
     rouge = load("rouge")
     cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum"])
 else:
     cols.append("acc")
-    if dataset_num in [2, 3]:
+    if num in [2, 3]:
         cols.append("f1")
-    if dataset_num == 3:
+    if num == 3:
         cols.extend(["mae", "rmse"])
-for file in all_res_files:
-    with open(file, "r") as f:
-        preds = json.load(f)["golds"]
-    if len(preds) != len(out_gts):
-        continue
-    preds = [p["output"] for p in preds]
-    params = file.split("/")
-    if len(params) == 5:
-        k = "0"
-        retriever = None
-    else:
-        k = params[-3][1:] 
-        retriever = file.split("/")[-2]
-    model_name = file.split("/")[-1][:-5]
-    models.append(model_name)
-    print(k, retriever, model_name)
-    if dataset_num > 3:
-        rouge_results = rouge.compute(predictions=preds, references=out_gts)
-        rouge_results["k"] = k
-        rouge_results["retriever"] = retriever
-        all_res.append(rouge_results)
-    else:
-        cor_pred = 0
-        for i in range(len(out_gts)):
-            if str(out_gts[i]) == str(preds[i]):
-                cor_pred += 1
-        acc = cor_pred/len(out_gts)
+
+for file in os.listdir(preds_dir):
+    if file.startswith(args.dataset):
+        retriever = file.split("_")[-1]
+        k = file.split("_")[-2]
+        method = file.split("_")[-3]
+        model = file.split("_")[-4]
+
+        with open(os.path.join(preds_dir, file), "r") as f:
+            preds = json.load(f)["golds"]
+            preds = [p["output"] for p in preds]
+
+        if len(preds) != len(out_gts):
+            continue
+
+        print(model, retriever, method, k)
         res_dict = {
-            "k": k,
+            "model": model,
+            "method": method,
             "retriever": retriever,
-            "acc": acc,
+            "k": k
         }
-        if dataset_num in [2, 3]:
-            f1_macro = f1_score(out_gts, preds, average="macro")
-            res_dict["f1"] = f1_macro
-        if dataset_num == 3:
-            mae = mean_absolute_error(list(map(int, out_gts)), list(map(int, preds)))
-            rmse = mean_squared_error(list(map(int, out_gts)), list(map(int, preds)))
-            res_dict["mae"] = mae
-            res_dict["rmse"] = rmse
-        all_res.append(res_dict)
+        if dataset.task == "generation":
+            rouge_results = rouge.compute(predictions=preds, references=out_gts)
+            all_res.append(res_dict | rouge_results)
+        else:
+            cor_pred = 0
+            for i in range(len(out_gts)):
+                if str(out_gts[i]) == str(preds[i]):
+                    cor_pred += 1
+            acc = cor_pred/len(out_gts)
+            res_dict["acc"] = acc
+            if num in [2, 3]:
+                f1_macro = f1_score(out_gts, preds, average="macro")
+                res_dict["f1"] = f1_macro
+            if num == 3:
+                mae = mean_absolute_error(list(map(float, out_gts)), list(map(float, preds)))
+                rmse = mean_squared_error(list(map(float, out_gts)), list(map(float, preds)))
+                res_dict["mae"] = mae
+                res_dict["rmse"] = rmse
+            all_res.append(res_dict)
+
 df = pd.DataFrame(all_res)
-df["model"] = models
 df = df[cols]
 df = df.round(dict([(c, 4) for c in df.columns if df[c].dtype == "float64"]))
-df.to_csv(f"lamp_{dataset_num}_eval_res.csv", index=False)
+df.to_csv(f"eval_{args.dataset}_{args.method}.csv", index=False)

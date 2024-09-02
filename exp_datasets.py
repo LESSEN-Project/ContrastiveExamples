@@ -37,6 +37,7 @@ class LampDataset(Dataset):
         self.num = num
         self.split = split
         self.tag = f"lamp_{self.num}_{self.split}"
+        self.task = "classification" if self.num < 4 else "generation"
         self.dataset_dir = dataset_dir
 
     def get_dataset(self):
@@ -140,6 +141,7 @@ class AmazonDataset(Dataset):
         self.category = category
         self.year = year
         self.tag = f"amazon_{self.category}_{self.year}"
+        self.task = "generation"
         self.dataset_dir = dataset_dir
 
     def get_dataset(self):
@@ -222,9 +224,9 @@ class AmazonDataset(Dataset):
         return [d["Product"]["Review"] for d in data]
     
     def get_var_names(self):
-        retr_gt_name = "Review"
-        retr_text_name = "Product Name"
-        retr_prompt_name = "Product Name"
+        retr_gt_name = "Product"
+        retr_text_name = "Review"
+        retr_prompt_name = "Review"
         return retr_text_name, retr_gt_name, retr_prompt_name
 
     def get_retr_data(self):
