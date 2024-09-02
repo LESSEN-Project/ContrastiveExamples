@@ -27,6 +27,7 @@ k = args.k
 retriever_model = args.retriever if k != 0 else None
 retriever = Retriever(retriever_model)
 personalizer = get_personalization_method(args.method, dataset, retriever)
+gts = dataset.get_gt()
 
 MAX_NEW_TOKENS = 64
 pred_path = "preds"
@@ -72,6 +73,8 @@ for model_name in LLMs:
         else:
             context = None
         prompt = personalizer.prepare_prompt(args.method, query, llm, context)
+        print(prompt)
+        print(gts[i])
         prompt = [{"role": "user", "content": prompt}]
 
         start_bot_time = time.time()    

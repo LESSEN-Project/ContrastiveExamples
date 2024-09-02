@@ -243,9 +243,8 @@ class CWMap(Personalize):
         if self.dataset.task == "classification" and self.dataset.num != 1:
             norm_sims = normalize_scores(similarities)
             classes = self.get_classes(retr_gts)
-            return [classes[idx] for idx in sorted_idxs]
+            return [f"{classes[idx]}, {norm_sims[idx]})" for idx in sorted_idxs]
         else:
-            
             profile_words = self.get_profile_words(retr_texts, retr_gts)
             return [list(profile_words)[idx] for idx in sorted_idxs]  
 
