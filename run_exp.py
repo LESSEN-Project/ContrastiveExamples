@@ -6,7 +6,7 @@ import torch
 import subprocess
 
 from models import LLM
-from utils import get_args, log_exp
+from utils import get_args, log_exp, parse_k
 from exp_datasets import LampDataset, AmazonDataset
 from retriever import Retriever
 from personalize import get_personalization_method
@@ -22,8 +22,10 @@ elif args.dataset.startswith("amazon"):
     year = int(args.dataset.split("_")[-1])
     category = "_".join(args.dataset.split("_")[1:-1])
     dataset = AmazonDataset(category, year)
+else:
+    raise Exception("Dataset not known!")
 
-k = args.k
+k = parse_k(args.method, args.krag, args.kcw)
 retriever_model = args.retriever if k != 0 else None
 retriever = Retriever(retriever_model)
 personalizer = get_personalization_method(args.method, dataset, retriever)
@@ -68,18 +70,18 @@ for model_name in LLMs:
     for i in range(len(queries)):
 
         query = queries[i]        
-        if all_context:
-            context = all_context[i]
-        else:
-            context = None
+        context = all_context[i]
         prompt = personalizer.prepare_prompt(args.method, query, llm, context)
+        print()
         print(prompt)
-        print(gts[i])
         prompt = [{"role": "user", "content": prompt}]
 
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
-        print(res)
+        print(f"Pred: {res}")
+        print()
+        print(f"GT: {gts[i]}")
+        print()
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 
