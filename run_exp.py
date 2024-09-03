@@ -79,6 +79,7 @@ for model_name in LLMs:
 
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
+        print(res)
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 

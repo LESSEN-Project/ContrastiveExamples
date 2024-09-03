@@ -11,7 +11,7 @@ from nltk import pos_tag
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords, wordnet
 
-from utils import shuffle_lists, softmax
+from utils import shuffle_lists
 
 class Personalize(ABC):
     def __init__(self, dataset, retriever) -> None:
@@ -216,13 +216,7 @@ class CWMap(Personalize):
         return self.process_profile(retr_texts, retr_gts)
 
     def get_classes(self, retr_gts):
-            new_classes = []
-            classes = list(set(retr_gts))
-            for cls in classes:
-                cls_idxs = [i for i, gt in enumerate(retr_gts) if gt == cls]
-                if len(cls_idxs) >= 2:
-                    new_classes.append(cls)
-            return new_classes
+            return list(set(retr_gts))
     
     def get_class_distances(self, query, retr_texts, retr_gts):
         classes = self.get_classes(retr_gts)
@@ -242,7 +236,7 @@ class CWMap(Personalize):
     def get_sorted_words(self, retr_texts, retr_gts, sorted_idxs, similarities=None):
         if self.dataset.task == "classification" and self.dataset.num != 1:
             classes = self.get_classes(retr_gts)
-            return [f"{classes[idx]}, {similarities[idx]})" for idx in sorted_idxs]
+            return [f"{classes[idx]}, {similarities[idx]}" for idx in sorted_idxs]
         else:
             profile_words = self.get_profile_words(retr_texts, retr_gts)
             return [list(profile_words)[idx] for idx in sorted_idxs]  
@@ -263,7 +257,7 @@ class CWMap(Personalize):
                     print(i)     
                     self.save_file("CWMap", (all_similarities, all_idxs))
             sorted_words = self.get_sorted_words(retr_texts[i], retr_gts[i], sorted_idxs, similarities)
-            words.append(sorted_words[:int(k)])         
+            words.append(sorted_words[:int(k)])
         return words
 
     def prepare_prompt(self, method, query, llm, examples):
