@@ -57,25 +57,31 @@ def _CW_lamp_prompt_1() -> str:
 
 def _CW_lamp_prompt_2() -> str:
     return strip_all("""Here is a movie description:
+                     <description>
                     {query}
+                     </description>
                     Your task is to predict the category tag of the movie.
                     Previous description-tag pairs of the user are analyzed to help you with the prediction. Here is the list of tags and the similarity scores they have with the given description:
                     {words}
                     The similarity scores are calculated by averaging the embeddings of descriptions for each category tag, then finding the distance between the averages and the given review.
                     Using the tag-similarity information, choose the correct category tag for the description between these tags:
                     [sci-fi, based on a book, comedy, action, twist ending, dystopia, dark comedy, classic, psychology, fantasy, romance, thought-provoking, social commentary, violence, true story]
-                    Remember that the rating-similarity scores are only estimations and may not always be representative.
+                    Remember that the rating-similarity scores are only estimations and may not always be representative. Therefore, also use the movie description to improve your prediction accuracy.
                     Only output the tag and nothing else.
                     Tag:""")
 
 def _CW_lamp_prompt_3() -> str:
     return strip_all("""Here is a review:
+                     <review>
                     {query}
-                    Your task is to predict the rating the user gave to the review.
+                     </review>
+                    Your task is to predict the rating user gave to the review.
                     Previous review-score pairs of the user are analyzed to help you with the prediction. Here is the list of ratings and the similarity scores they have with the given review:
                     {words}
                     The similarity scores are calculated by averaging the embeddings of reviews for each score category, then finding the distance between the averages and the given review.
-                    Using the rating-similarity information, predict the score between [1, 2, 3, 4, 5] to the review. Remember that the rating-similarity scores are only estimations and may not always be representative. Only output the score and nothing else.
+                    Using the rating-similarity information, predict the score between [1, 2, 3, 4, 5] to the review. 
+                    Remember that the rating-similarity scores are only estimations and may not always be representative. Therefore, also use the review to improve your prediction accuracy.
+                    Only output the score and nothing else.
                     Score:""")
 
 def _CW_lamp_prompt_4() -> str:
