@@ -23,7 +23,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="lamp_5_dev", type=str)
     parser.add_argument("-m", "--method", default="RAG", type=str)
-    parser.add_argument("-k", "--k", default="3", type=str)
+    parser.add_argument("-kr", "--krag", default="3", type=str)
+    parser.add_argument("-kc", "--kcw", default="10", type=str)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
     return parser.parse_args()
 
@@ -87,3 +88,12 @@ def shuffle_lists(list1, list2):
 def softmax(x):
     e_x = np.exp(x - np.max(x))
     return (e_x/e_x.sum()).tolist()
+
+def parse_k(method, krag, kcw):
+    if method == "RAG":
+        k = krag
+    elif method == "CWMap":
+        k = kcw
+    elif method == "Comb":
+        k = krag, kcw
+    return k

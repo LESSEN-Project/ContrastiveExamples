@@ -5,9 +5,8 @@ import json
 from abc import ABC, abstractmethod
 
 import numpy as np
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import word_tokenize
 import nltk
-from nltk import pos_tag
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords, wordnet
 
@@ -93,14 +92,10 @@ class RAG(Personalize):
             all_examples.append(examples)
         return all_examples
 
-    def prepare_prompt(self, method, query, llm, examples=None):
+    def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
-        zero_shot = init_prompt.format(query=query, examples="")
-        if not examples:
-            return zero_shot
-        else:
-            context = llm.prepare_context(zero_shot, examples)    
-            return init_prompt.format(query=query, examples=context)
+        context = llm.prepare_context(init_prompt, query, examples)    
+        return init_prompt.format(query=query, examples=context)
     
 class CWMap(Personalize):
     def __init__(self, dataset, retriever) -> None:
@@ -127,29 +122,22 @@ class CWMap(Personalize):
 
     def preprocess_text(self, text):
         lemmatizer = WordNetLemmatizer()
-        sentences = sent_tokenize(text)
-        processed_sentences = []
+        words = word_tokenize(text.lower())
+        processed_words = []
+        current_position = 0
         
-        for sentence in sentences:
-            words = [match.group() for match in re.finditer(r'\b[a-zA-Z]+\b', sentence)]
-            pos_tags = pos_tag(words)
-            
-            words_with_positions = []
-            current_position = 0
-            
-            for word, pos in pos_tags:
-                start = sentence.lower().find(word.lower(), current_position)
+        for word in words:
+            if word.isalnum():
+                start = text.lower().find(word, current_position)
                 end = start + len(word)
                 current_position = end
                 
-                lemma = lemmatizer.lemmatize(word.lower(), pos=self.get_wordnet_pos(pos))
-                words_with_positions.append((word.lower(), lemma, start, end))
-            
-            processed_sentences.append((sentence, words_with_positions))
+                lemma = lemmatizer.lemmatize(word)
+                processed_words.append((word, lemma, start, end))
         
-        return processed_sentences, sentences
+        return processed_words
 
-    def process_profile(self, retr_texts, retr_gts, include_embeds=False, context_size=1):
+    def process_profile(self, retr_texts, retr_gts, include_embeds=False, context_size=3):
         profile = [f"{gt}: {text}" for text, gt in zip(retr_texts, retr_gts)]
         word_info = {}
         stop_words = set(stopwords.words('english'))
@@ -157,34 +145,34 @@ class CWMap(Personalize):
         contexts_to_embed = set()
 
         for doc_id, document in enumerate(profile):
-            processed_sentences, original_sentences = self.preprocess_text(document)
+            processed_words = self.preprocess_text(document)
             
-            for sent_idx, (_, words_with_positions) in enumerate(processed_sentences):
-                for original, lemma, start, end in words_with_positions:
-                    if lemma not in stop_words:
-                        if lemma not in word_info:
-                            word_info[lemma] = {
-                                "count": 0,
-                                "sentences": {},
-                                "original_forms": set()
-                            }
-                        
-                        word_info[lemma]["count"] += 1
-                        word_info[lemma]["original_forms"].add(original)
-                        
-                        start_idx = max(0, sent_idx - context_size)
-                        end_idx = min(len(original_sentences), sent_idx + context_size + 1)
-                        context_sentences = " ".join(original_sentences[start_idx:end_idx])
-                        
-                        if context_sentences not in word_info[lemma]["sentences"]:
-                            word_info[lemma]["sentences"][context_sentences] = {
-                                "doc_id": doc_id,
-                                "position": [f"{start}:{end}"],
-                            }
-                            if include_embeds:
-                                contexts_to_embed.add(context_sentences)
-                        else:
-                            word_info[lemma]["sentences"][context_sentences]["position"].append(f"{start}:{end}")
+            for word_idx, (original, lemma, start, end) in enumerate(processed_words):
+                if lemma not in stop_words:
+                    if lemma not in word_info:
+                        word_info[lemma] = {
+                            "count": 0,
+                            "contexts": {},
+                            "original_forms": set()
+                        }
+                    
+                    word_info[lemma]["count"] += 1
+                    word_info[lemma]["original_forms"].add(original)
+                    
+                    start_idx = max(0, word_idx - context_size)
+                    end_idx = min(len(processed_words), word_idx + context_size + 1)
+                    context_words = [w[0] for w in processed_words[start_idx:end_idx]]
+                    context = " ".join(context_words)
+                    
+                    if context not in word_info[lemma]["contexts"]:
+                        word_info[lemma]["contexts"][context] = {
+                            "doc_id": doc_id,
+                            "position": [f"{start}:{end}"],
+                        }
+                        if include_embeds:
+                            contexts_to_embed.add(context)
+                    else:
+                        word_info[lemma]["contexts"][context]["position"].append(f"{start}:{end}")
 
         if include_embeds and contexts_to_embed:
             batched_embeddings = self.retriever._encode(list(contexts_to_embed))
@@ -192,14 +180,14 @@ class CWMap(Personalize):
 
         for lemma in word_info:
             word_info[lemma]["original_forms"] = list(word_info[lemma]["original_forms"])
-            word_info[lemma]["sentences"] = [
+            word_info[lemma]["contexts"] = [
                 {
-                    "sentence": sentence,
+                    "context": context,
                     "doc_id": info["doc_id"],
                     "position": info["position"],
-                    **({'embedding': embedding_cache[sentence].tolist()} if include_embeds else {})
+                    **({'embedding': embedding_cache[context].tolist()} if include_embeds else {})
                 }
-                for sentence, info in word_info[lemma]["sentences"].items()
+                for context, info in word_info[lemma]["contexts"].items()
             ]
 
         return word_info
@@ -208,7 +196,7 @@ class CWMap(Personalize):
         profile_words = self.process_profile(retr_texts, retr_gts, include_embeds=True)
         word_embeds = []
         for word in profile_words.keys():
-            word_embeds.append(np.array([s["embedding"] for s in profile_words[word]["sentences"]]).mean(axis=0, dtype=np.float32))
+            word_embeds.append(np.array([s["embedding"] for s in profile_words[word]["contexts"]]).mean(axis=0, dtype=np.float32))
         word_embeds = np.array(word_embeds)
         return self.retriever.get_retrieval_results(query, word_embeds)
 
@@ -216,7 +204,7 @@ class CWMap(Personalize):
         return self.process_profile(retr_texts, retr_gts)
 
     def get_classes(self, retr_gts):
-            return list(set(retr_gts))
+        return list(set(retr_gts))
     
     def get_class_distances(self, query, retr_texts, retr_gts):
         classes = self.get_classes(retr_gts)
@@ -233,13 +221,14 @@ class CWMap(Personalize):
         else:
             return self.get_word_distances(query, retr_texts, retr_gts)
         
-    def get_sorted_words(self, retr_texts, retr_gts, sorted_idxs, similarities=None):
+    def get_sorted_words(self, retr_texts, retr_gts, sorted_idxs, similarities, k):
         if self.dataset.task == "classification" and self.dataset.num != 1:
             classes = self.get_classes(retr_gts)
-            return [f"{classes[idx]}, {similarities[idx]}" for idx in sorted_idxs]
+            return [f"{classes[idx]}, {round(similarities[idx], 3)}" for idx in sorted_idxs]
         else:
             profile_words = self.get_profile_words(retr_texts, retr_gts)
-            return [list(profile_words)[idx] for idx in sorted_idxs]  
+            # return [list(profile_words)[idx] for idx in sorted_idxs][:int(k)]
+            return [f"{list(profile_words)[idx]}, {round(similarities[idx], 3)}" for idx in sorted_idxs][:int(k)]
 
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> Union[List[List[str]], None]:
 
@@ -256,20 +245,32 @@ class CWMap(Personalize):
                 if ((i+1)%500 == 0) or (i+1 == len(queries)):
                     print(i)     
                     self.save_file("CWMap", (all_similarities, all_idxs))
-            sorted_words = self.get_sorted_words(retr_texts[i], retr_gts[i], sorted_idxs, similarities)
-            words.append(sorted_words[:int(k)])
+            sorted_words = self.get_sorted_words(retr_texts[i], retr_gts[i], sorted_idxs, similarities, k)
+            words.append(sorted_words)
         return words
 
     def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
-        context = llm.prepare_context(init_prompt, examples) 
+        context = llm.prepare_context(init_prompt, query, examples) 
         return init_prompt.format(query=query, words=context.splitlines())
 
 
 class Comb(Personalize):
     def __init__(self, dataset, retriever) -> None:
         super().__init__(dataset, retriever)
+        self.rag_module = RAG(dataset, retriever)
+        self.cw_module = CWMap(dataset, retriever)
 
+    def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> List[List[str]] | None:
+        rag_context = self.rag_module.get_context(queries, retr_texts, retr_gts, k[0])
+        cw_context = self.cw_module.get_context(queries, retr_texts, retr_gts, k[1])
+        return [context for context in zip(rag_context, cw_context)]
+    
+    def prepare_prompt(self, method, query, llm, examples):
+        init_prompt = self.dataset.get_prompt(method)
+        cw_context = llm.prepare_context(init_prompt, query, examples[1])
+        rag_context = llm.prepare_context(init_prompt, f"{query}c\n{examples[1]}", examples[0])
+        return init_prompt.format(query=query, words=cw_context.splitlines(), examples=rag_context)
 
 def get_personalization_method(method: str, dataset, retriever) -> Personalize:
     if method == "RAG":
