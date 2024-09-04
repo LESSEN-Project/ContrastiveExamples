@@ -37,7 +37,7 @@ os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
-LLMs = ["LLAMA-3.1-8B", "GEMMA-2-9B", "GEMMA-2-27B"]
+LLMs = ["GPT-4o-mini", "LLAMA-3.1-8B", "GEMMA-2-9B"]
 print(f"Running experiments for {args.dataset} using {args.method}")
 sys.stdout.flush()
 for model_name in LLMs:
@@ -57,9 +57,9 @@ for model_name in LLMs:
         queries = queries[len(all_res):]
         retr_texts = retr_texts[len(all_res):]
         retr_gts = retr_gts[len(all_res):]
+        gts = gts[len(all_res):]
 
     all_context = personalizer.get_context(queries, retr_texts, retr_gts, k) 
-    all_context = all_context[len(all_res):]
     llm = LLM(model_name=model_name, gen_params={"max_new_tokens": MAX_NEW_TOKENS})
 
     print(f"Starting from sample no. {len(all_res)}")
@@ -71,10 +71,13 @@ for model_name in LLMs:
 
         query = queries[i]        
         context = all_context[i]
+        print(context)
         prompt = personalizer.prepare_prompt(args.method, query, llm, context)
         prompt = [{"role": "user", "content": prompt}]
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
+        print(f"Pred: {res}")
+        print(f"GT: {gts[i]}")
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 
