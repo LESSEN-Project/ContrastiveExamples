@@ -1,0 +1,5 @@
+model,method,retriever,K,acc,f1
+GEMMA-2-9B,RAG,contriever.json,7,0.5202,0.3256
+GEMMA-2-9B,RAG,contriever.json,5,0.526,0.3015
+LLAMA-3.1-8B,RAG,contriever.json,5,0.474,0.3424
+LLAMA-3.1-8B,RAG,contriever.json,7,0.4928,0.3227
