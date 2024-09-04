@@ -35,6 +35,8 @@ class Dataset(ABC):
 
 class LampDataset(Dataset):
     def __init__(self, num, split="dev", dataset_dir="datasets"):
+        self.year = None
+        self.category = None
         self.num = num
         self.split = split
         self.tag = f"lamp_{self.num}_{self.split}"
@@ -75,7 +77,7 @@ class LampDataset(Dataset):
                     gts = json.load(url)["golds"]
                 with open(gts_path, "w") as f:
                     json.dump(gts, f)
-            return gts
+            return [p["output"] for p in gts]
         else:
             print("Ground truth for test set not available!")
             return None
@@ -139,6 +141,8 @@ class LampDataset(Dataset):
 
 class AmazonDataset(Dataset):
     def __init__(self, category, year, dataset_dir="datasets"):
+        self.num = None
+        self.split = None
         self.category = category
         self.year = year
         self.tag = f"amazon_{self.category}_{self.year}"

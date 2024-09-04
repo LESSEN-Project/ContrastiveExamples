@@ -5,7 +5,7 @@ from sentence_transformers import SentenceTransformer
 
 
 class Retriever:
-    def __init__(self, model: str = "bm25", device: str = "cuda:0"):
+    def __init__(self, model: str = "contriever", device: str = "cuda:0"):
         self.model = model
         self.device = device
         self._init_model()
