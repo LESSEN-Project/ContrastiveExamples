@@ -37,7 +37,7 @@ os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
-LLMs = ["GEMMA-2-2B", "LLAMA-3.1-8B"]
+LLMs = ["LLAMA-3.1-8B", "GEMMA-2-9B", "GEMMA-2-27B"]
 print(f"Running experiments for {args.dataset} using {args.method}")
 sys.stdout.flush()
 for model_name in LLMs:
@@ -73,10 +73,8 @@ for model_name in LLMs:
         context = all_context[i]
         prompt = personalizer.prepare_prompt(args.method, query, llm, context)
         prompt = [{"role": "user", "content": prompt}]
-        print(prompt[0]["content"])
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
-        print(res)
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 

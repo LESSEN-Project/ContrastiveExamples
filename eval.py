@@ -20,6 +20,10 @@ elif args.dataset.startswith("amazon"):
     dataset = AmazonDataset(category, year)
 
 preds_dir = "preds"
+evals_dir = "evals"
+os.makedirs(preds_dir, exist_ok=True)
+os.makedirs(evals_dir, exist_ok=True)
+
 out_gts = dataset.get_gt()
 out_gts = [p["output"] for p in out_gts]
 all_res = []
@@ -79,4 +83,4 @@ for file in os.listdir(preds_dir):
 df = pd.DataFrame(all_res)
 df = df[cols]
 df = df.round(dict([(c, 4) for c in df.columns if df[c].dtype == "float64"]))
-df.to_csv(f"eval_{args.dataset}.csv", index=False)
+df.to_csv(os.path.join(evals_dir, f"eval_{args.dataset}.csv"), index=False)
