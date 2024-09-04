@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import requests
 import gzip
@@ -117,7 +118,7 @@ class LampDataset(Dataset):
                 text_idx = sample["input"].find(":") + 1
                 queries.append(sample["input"][text_idx:].strip())
             elif self.num == 1:
-                queries.append(sample["input"].strip())
+                queries.append(re.findall(r'"(.*?)"', sample["input"]))
             elif self.num == 2:
                 text_idx = sample["input"].find("description:") + 1
                 queries.append(sample["input"][text_idx+len("description:"):].strip())

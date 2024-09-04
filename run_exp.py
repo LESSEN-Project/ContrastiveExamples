@@ -72,16 +72,11 @@ for model_name in LLMs:
         query = queries[i]        
         context = all_context[i]
         prompt = personalizer.prepare_prompt(args.method, query, llm, context)
-        print()
-        print(prompt)
         prompt = [{"role": "user", "content": prompt}]
-
+        print(prompt[0]["content"])
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
-        print(f"Pred: {res}")
-        print()
-        print(f"GT: {gts[i]}")
-        print()
+        print(res)
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 

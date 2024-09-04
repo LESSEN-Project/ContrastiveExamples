@@ -60,13 +60,19 @@ class RAG(Personalize):
         all_examples = []
         _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
         for i, query in enumerate(queries):
+            if isinstance(query, list):
+                query = query[0]
             retr_text = retr_texts[i]
             retr_gt = retr_gts[i]
             if len(all_idxs) > i:
                 similarities = all_similarities[i]
                 sorted_idxs = np.array(all_idxs[i])
             else:
-                similarities, sorted_idxs = self.retriever.get_retrieval_results(query, retr_text)
+                if self.dataset.num == 1:
+                    retr_var = retr_gt
+                else:
+                    retr_var = retr_text
+                similarities, sorted_idxs = self.retriever.get_retrieval_results(query, retr_var)
                 all_similarities.append(similarities)
                 all_idxs.append(sorted_idxs)
                 if ((i+1)%500 == 0) or (i+1 == len(queries)):
@@ -94,8 +100,15 @@ class RAG(Personalize):
 
     def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
-        context = llm.prepare_context(init_prompt, query, examples)    
-        return init_prompt.format(query=query, examples=context)
+        if self.dataset.num != 1:
+            context = llm.prepare_context(init_prompt, query, examples)
+            return init_prompt.format(query=query, examples=context)
+        else:
+            context = llm.prepare_context(init_prompt, str(query), examples)
+            real_query = query[0]
+            first_option = query[1]
+            second_option = query[2]
+            return init_prompt.format(query=real_query, examples=context, first_option=first_option, second_option=second_option)
     
 class CWMap(Personalize):
     def __init__(self, dataset, retriever) -> None:
@@ -219,6 +232,8 @@ class CWMap(Personalize):
         if self.dataset.task == "classification" and self.dataset.num != 1:
             return self.get_class_distances(query, retr_texts, retr_gts)
         else:
+            if self.dataset.num == 1:
+                query = query[0]
             return self.get_word_distances(query, retr_texts, retr_gts)
         
     def get_sorted_words(self, retr_texts, retr_gts, sorted_idxs, similarities, k):
@@ -251,8 +266,17 @@ class CWMap(Personalize):
 
     def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
-        context = llm.prepare_context(init_prompt, query, examples) 
-        return init_prompt.format(query=query, words=context.splitlines())
+        if self.dataset.num != 1:
+            context = llm.prepare_context(init_prompt, query, examples) 
+            words = context.splitlines()
+            return init_prompt.format(query=query, words=words)
+        else:
+            context = llm.prepare_context(init_prompt, str(query), examples) 
+            words = context.splitlines()
+            real_query = query[0]
+            first_option = query[1]
+            second_option = query[2]     
+            return init_prompt.format(query=real_query, words=words, first_option=first_option, second_option=second_option)       
 
 
 class Comb(Personalize):
@@ -268,9 +292,17 @@ class Comb(Personalize):
     
     def prepare_prompt(self, method, query, llm, examples):
         init_prompt = self.dataset.get_prompt(method)
-        cw_context = llm.prepare_context(init_prompt, query, examples[1])
-        rag_context = llm.prepare_context(init_prompt, f"{query}c\n{examples[1]}", examples[0])
-        return init_prompt.format(query=query, words=cw_context.splitlines(), examples=rag_context)
+        if self.dataset.num != 1:
+            cw_context = llm.prepare_context(init_prompt, query, examples[1])
+            rag_context = llm.prepare_context(init_prompt, f"{query}c\n{examples[1]}", examples[0])
+            return init_prompt.format(query=query, words=cw_context.splitlines(), examples=rag_context)
+        else:
+            cw_context = llm.prepare_context(init_prompt, str(query), examples[1])
+            rag_context = llm.prepare_context(init_prompt, f"{query}c\n{examples[1]}", examples[0])      
+            real_query = query[0]
+            first_option = query[1]
+            second_option = query[2]         
+            return init_prompt.format(query=real_query, words=cw_context.splitlines(), examples=rag_context, first_option=first_option, second_option=second_option)
 
 def get_personalization_method(method: str, dataset, retriever) -> Personalize:
     if method == "RAG":
