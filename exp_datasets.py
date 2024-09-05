@@ -35,12 +35,9 @@ class Dataset(ABC):
 
 class LampDataset(Dataset):
     def __init__(self, num, split="dev", dataset_dir="datasets"):
-        self.year = None
-        self.category = None
         self.num = num
         self.split = split
         self.tag = f"lamp_{self.num}_{self.split}"
-        self.task = "classification" if self.num < 4 else "generation"
         self.dataset_dir = dataset_dir
 
     def get_dataset(self):
@@ -141,12 +138,9 @@ class LampDataset(Dataset):
 
 class AmazonDataset(Dataset):
     def __init__(self, category, year, dataset_dir="datasets"):
-        self.num = None
-        self.split = None
         self.category = category
         self.year = year
         self.tag = f"amazon_{self.category}_{self.year}"
-        self.task = "generation"
         self.dataset_dir = dataset_dir
 
     def get_dataset(self):
