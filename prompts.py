@@ -59,3 +59,15 @@ def _RAG_lamp_prompt_7() -> str:
                      Tweet:
                      {query}
                      Paraphrased Tweet:""")
+
+
+
+"""Your task is to generate a title for the given news article.
+                     You will be provided some similar article-title pairs from editor's past works to help you with the task.
+                     <SimilarPairs>
+                     {examples}
+                     </SimilarPairs>
+                     Capture the news editor's writing style while generating the title. Only output the title and nothing else.
+                     Article: 
+                     {query}
+                     Title:"""
