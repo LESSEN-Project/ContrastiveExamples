@@ -1,3 +1,6 @@
+import os
+import json
+
 import numpy as np
 from typing import List
 
@@ -5,9 +8,12 @@ from sentence_transformers import SentenceTransformer
 
 
 class Retriever:
-    def __init__(self, model: str = "contriever", device: str = "cuda:0"):
+    def __init__(self, dataset, model: str = "contriever", device: str = "cuda:0"):
         self.model = model
         self.device = device
+        self.dataset = dataset
+        self.save_loc = "retrieval_res"
+        os.makedirs(self.save_loc, exist_ok=True)
         self._init_model()
 
     def _init_model(self):
@@ -17,6 +23,21 @@ class Retriever:
             self.retr_model = SentenceTransformer("sentence-transformers/facebook-dpr-ctx_encoder-single-nq-base", device=self.device)  
         else:
             self.retr_model = SentenceTransformer(self.model, device=self.device)
+
+    def check_file(self):
+        file_path = os.path.join(self.save_loc, f"{self.dataset.tag}_{self.model}.json")
+        if os.path.exists(file_path):
+            with open(file_path, "r") as f:
+                all_idxs = json.load(f)
+        else:
+            print("Retrieval results are not cached, starting from 0!")
+            all_idxs = []
+        return all_idxs
+    
+    def save_file(self, obj):
+        file_path = os.path.join(self.save_loc, f"{self.dataset.tag}_{self.model}.json")
+        with open(file_path, "w") as f:
+            json.dump(obj, f)
 
     def get_retrieval_results(self, queries: List[str], retr_texts: List[List[str]]) -> List[List[int]]:
         return self._neural_retrieval(queries, retr_texts)
@@ -35,3 +56,35 @@ class Retriever:
         if isinstance(similarities, float):
             similarities = [similarities]
         return similarities, sorted_idxs
+    
+    def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> List[List[str]]:
+        all_idxs = self.check_file()
+        all_examples = []
+        _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
+        for i, query in enumerate(queries):
+            if isinstance(query, list):
+                query = query[0]
+            retr_text = retr_texts[i]
+            retr_gt = retr_gts[i]
+            if len(all_idxs) > i:
+                sorted_idxs = all_idxs[i]
+            else:
+                _, sorted_idxs = self.get_retrieval_results(query, retr_text)
+                
+                all_idxs.append(sorted_idxs)
+                if ((i+1)%500 == 0) or (i+1 == len(queries)):
+                    print(i)     
+                    self.save_file(all_idxs)
+
+            texts = [retr_text[doc_id] for doc_id in sorted_idxs[:k]]
+            gts = [retr_gt[doc_id] for doc_id in sorted_idxs[:k]]
+
+            examples = []
+            for text, gt in zip(texts, gts):
+                if text != gt:
+                    example = f"{retr_prompt_name.capitalize()}:\n{text}\n{retr_gt_name.capitalize()}:\n{gt}\n"
+                else:
+                    example = f"{retr_prompt_name.capitalize()}:\n{text}"
+                examples.append(example)
+            all_examples.append(examples)
+        return all_examples

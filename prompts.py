@@ -1,73 +1,79 @@
+def prepare_prompt(dataset, query, llm, examples, features=None):
+    if dataset.name == "lamp":
+        init_prompt = lamp_prompts(dataset.num)
+    elif dataset.name == "amazon":
+        init_prompt = amazon_prompts()
+    context = llm.prepare_context(init_prompt, f"{query}\n{features}", examples)
+    if features:
+        features = "\n".join(features)
+    return init_prompt.format(query=query, examples=context, features=features)
+
 def strip_all(text: str) -> str:
     return "\n".join(line.strip() for line in text.splitlines())
 
-def amazon_prompts(method):
-    if method == "RAG":
-        return _RAG_amazon_prompt()
-    else:
-        raise Exception("No such method exists!")
+def amazon_prompts():
+    return _RAG_amazon_prompt()
 
 def _RAG_amazon_prompt() -> str:
-    return strip_all("""Your task is to generate a review for a product the customer bought.
-                     You will be provided some similar product name-review pairs from the customer's past purchases to help you with the task.
+    return strip_all("""You are an Amazon customer who writes reviews for the products you bought. You will be provided a set of features to help you understand your writing style.
+                     First feature you will receive is similar product-reviews pairs from your past reviews:
                      <SimilarPairs>
                      {examples}
                      </SimilarPairs>
-                     Capture the customer's writing style while generating the review. Only output the review and nothing else.
-                     Product Name:
+                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other writers:
+                     {features}
+                     Using the features, generate the proper review. If you haven't received any features besides similar pairs, only make use of them. 
+                     Only output the review and nothing else.
+                     Product:
                      {query}
                      Review:""")
 
-def lamp_prompts(dataset_num: int, method: str) -> str:
-    if method == "RAG":
-        RAG_lamp_prompts = {
-            4: _RAG_lamp_prompt_4,
-            5: _RAG_lamp_prompt_5,
-            7: _RAG_lamp_prompt_7
-        }
-        return RAG_lamp_prompts.get(dataset_num)()
+def lamp_prompts(dataset_num: int) -> str:
+    RAG_lamp_prompts = {
+        4: _RAG_lamp_prompt_4,
+        5: _RAG_lamp_prompt_5,
+        7: _RAG_lamp_prompt_7
+    }
+    return RAG_lamp_prompts.get(dataset_num)()
 
 def _RAG_lamp_prompt_4() -> str:
-    return strip_all("""Your task is to generate a title for the given news article.
-                     You will be provided some similar article-title pairs from editor's past works to help you with the task.
+    return strip_all("""You are a news editor that generates titles for articles. You will be provided a set of features to help you understand your writing style.
+                     First feature you will receive is similar article-title pairs from your past works:
                      <SimilarPairs>
                      {examples}
                      </SimilarPairs>
-                     Capture the news editor's writing style while generating the title. Only output the title and nothing else.
+                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other writers:
+                     {features}
+                     Using the features, generate the proper title. If you haven't received any features besides similar pairs, only make use of them. 
+                     Only output the title and nothing else.
                      Article: 
                      {query}
                      Title:""")
 
 def _RAG_lamp_prompt_5() -> str:
-    return strip_all("""Your task is to generate a title for the given academic abstract.
-                     You will be provided some similar abstract-title pairs from scholar's past works to help you with the task.
+    return strip_all("""You are a scholar that generates titles for abstracts. You will be provided a set of features to help you understand your writing style.
+                     First feature you will receive is similar abstract-title pairs from your past works:
                      <SimilarPairs>
                      {examples}
                      </SimilarPairs>
-                     Capture the scholar's writing style while generating the title. Only output the title and nothing else.
+                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other writers:
+                     {features}
+                     Using the features, generate the proper title. If you haven't received any features besides similar pairs, only make use of them. 
+                     Only output the title and nothing else.
                      Abstract:
                      {query}
                      Title:""")
 
 def _RAG_lamp_prompt_7() -> str:
-    return strip_all("""Your task is to rephrase a tweet in the style of the user.
-                     You will be provided some similar tweets from user's past tweets to help you with the task.
+    return strip_all("""You are a Twitter user who rephrases their own tweets. You will be provided a set of features to help you understand your writing style.
+                     First feature you will receive is similar tweets from your past ones:
                      <SimilarTweets>
                      {examples}
                      </SimilarTweets>
-                     Capture user's writing style while paraphrasing. Only output the tweet and nothing else.
+                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other twiiter users:
+                     {features}
+                     Using the features, rephrase the tweet. If you haven't received any features besides similar tweets, only make use of them. 
+                     Only output the rephrased tweet and nothing else.
                      Tweet:
                      {query}
                      Paraphrased Tweet:""")
-
-
-
-"""Your task is to generate a title for the given news article.
-                     You will be provided some similar article-title pairs from editor's past works to help you with the task.
-                     <SimilarPairs>
-                     {examples}
-                     </SimilarPairs>
-                     Capture the news editor's writing style while generating the title. Only output the title and nothing else.
-                     Article: 
-                     {query}
-                     Title:"""

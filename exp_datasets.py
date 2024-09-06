@@ -8,8 +8,6 @@ import datetime
 import urllib
 from abc import ABC, abstractmethod
 
-from prompts import amazon_prompts, lamp_prompts
-
 
 class Dataset(ABC):
     @abstractmethod
@@ -27,14 +25,11 @@ class Dataset(ABC):
     @abstractmethod
     def get_retr_data(self):
         pass
-    
-    @abstractmethod
-    def get_prompt(self):
-        pass
 
 
 class LampDataset(Dataset):
     def __init__(self, num, split="dev", dataset_dir="datasets"):
+        self.name = "lamp"
         self.num = num
         self.split = split
         self.tag = f"lamp_{self.num}_{self.split}"
@@ -128,9 +123,6 @@ class LampDataset(Dataset):
                 retr_gts = retr_text
         return queries, retr_text, retr_gts
 
-    def get_prompt(self, method):
-        return lamp_prompts(self.num, method)
-        
     def get_ids(self):
         data = self.get_dataset()
         return [i["id"] for i in data]
@@ -138,6 +130,7 @@ class LampDataset(Dataset):
 
 class AmazonDataset(Dataset):
     def __init__(self, category, year, dataset_dir="datasets"):
+        self.name = "amazon"
         self.category = category
         self.year = year
         self.tag = f"amazon_{self.category}_{self.year}"
@@ -223,9 +216,9 @@ class AmazonDataset(Dataset):
         return [d["Product"]["Review"] for d in data]
     
     def get_var_names(self):
-        retr_gt_name = "Product"
-        retr_text_name = "Review"
-        retr_prompt_name = "Review"
+        retr_gt_name = "Review"
+        retr_text_name = "Product"
+        retr_prompt_name = "Product"
         return retr_text_name, retr_gt_name, retr_prompt_name
 
     def get_retr_data(self):
@@ -235,12 +228,9 @@ class AmazonDataset(Dataset):
         data = self.get_dataset()
         for sample in data:
             queries.append(sample["Product"]["Name"])
-            retr_text.append([item["Review"] for item in sample["History"]])
-            retr_gts.append([item["Name"] for item in sample["History"]])
+            retr_text.append([item["Name"] for item in sample["History"]])
+            retr_gts.append([item["Review"] for item in sample["History"]])
         return queries, retr_text, retr_gts
-
-    def get_prompt(self, method):
-        return amazon_prompts(method)
     
     def download_amazon_datasets(self, target_dest="datasets"):
         os.makedirs(target_dest, exist_ok=True)
