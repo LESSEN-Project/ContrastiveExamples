@@ -6,11 +6,11 @@ import torch
 import subprocess
 
 from models import LLM
-from utils import get_args, log_exp, get_k
+from utils import get_args, get_k
+from prompts import prepare_prompt
 from exp_datasets import LampDataset, AmazonDataset
 from feature_processor import FeatureProcessor
 from retriever import Retriever
-from personalize import Personalizer
 
 args = get_args()
 if args.dataset.startswith("lamp"):
@@ -27,8 +27,7 @@ else:
     raise Exception("Dataset not known!")
 
 gts = dataset.get_gt()
-retriever = Retriever(args.retriever)
-personalizer = Personalizer(dataset, retriever)
+retriever = Retriever(dataset, args.retriever)
 
 MAX_NEW_TOKENS = 64
 pred_path = "preds"
@@ -37,22 +36,22 @@ if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
 LLMs = ["GPT-4o-mini", "LLAMA-3.1-8B", "GEMMA-2-9B"]
-print(f"Running experiments for {args.dataset} using features: {args.features} and retriever: {args.retriever}")
-sys.stdout.flush()
-
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
-k = get_k(retr_texts)
-print(f"K: {k}")
-all_context = personalizer.get_context(queries, retr_texts, retr_gts, k) 
+if not args.k:
+    k = get_k(retr_texts)
 
-feature_processor = FeatureProcessor()
-if args.feats_gt_only:
-    features = feature_processor.get_features(dataset.tag, args.features, retr_gts)
-else:
-    features = feature_processor.get_features(dataset.tag, args.features, retr_gts, retr_texts)
+all_context = retriever.get_context(queries, retr_texts, retr_gts, k) 
+if args.features:
+    feature_processor = FeatureProcessor()
+    if args.feats_gt_only:
+        all_features = feature_processor.get_features(dataset.tag, args.features, retr_gts)
+    else:
+        all_features = feature_processor.get_features(dataset.tag, args.features, retr_gts, retr_texts)
 
+print(f"Running experiments for {args.dataset} with Features: {args.features}, Retriever: {args.retriever}, and K: {k}")
+sys.stdout.flush()
 for model_name in LLMs:
-    exp_name = f"{args.dataset}_{model_name}_{','.join(args.features)}_{args.retriever}"
+    exp_name = f"{args.dataset}_{model_name}_{args.features}_{args.retriever}"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -72,8 +71,10 @@ for model_name in LLMs:
     retr_gts = retr_gts[len(all_res):]
     gts = gts[len(all_res):]
     all_context = all_context[len(all_res):]
-    if features:
-        features = features[len(all_res):]
+    if args.features:
+        all_features = all_features[len(all_res):]
+    else:
+        features = None
 
     print(f"Starting from sample no. {len(all_res)}")
     start_time = time.time()
@@ -84,9 +85,11 @@ for model_name in LLMs:
 
         query = queries[i]        
         context = all_context[i]
-        print("".join(context))
-        prompt = personalizer.prepare_prompt(args.method, query, llm, context)
+        if args.features:
+            features = all_features[i]
+        prompt = prepare_prompt(dataset, query, llm, context, features)
         prompt = [{"role": "user", "content": prompt}]
+        print(prompt[0]["content"])
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
         print(f"Pred: {res}")
@@ -95,17 +98,13 @@ for model_name in LLMs:
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 
-        cur_iter_res = {
-            "id": id,
-            "prompt": prompt[0]["content"],
-            "output": res.strip(),
-            "model_inf_time": round(end_bot_time - start_bot_time, 2) 
-        }
-        log_exp(cur_iter_res, exp_name)
         all_res.append({
-            "id": id,
-            "output": res.strip()
+                "id": id,
+                "output": res.strip(),
+                "prompt": prompt[0]["content"],
+                "model_inf_time": round(end_bot_time - start_bot_time, 2), 
         })
+
         if (i+1)%500==0 or (i+1)==len(queries):
             print(i)
             with open(pred_out_path, "w") as f:

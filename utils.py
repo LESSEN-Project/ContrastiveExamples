@@ -4,24 +4,24 @@ import json
 import random
 import re
 import numpy as np
+import time
 
 def log_exp(cur_iter, exp_name):
     os.makedirs("logs", exist_ok=True)
-    result_path = os.path.join("logs", f"{exp_name}.json")
+    result_path = os.path.join("logs", f"{exp_name}_{time.time()}.json")
     if os.path.exists(result_path):
         with open(result_path, "r") as f:
             results = json.load(f)
     else:
         results = []
     with open(result_path, "w") as f:
-        ids = [res["id"] for res in results]
-        if cur_iter["id"] not in ids:
-            results.append(cur_iter)
-            json.dump(results, f)
+        results.append(cur_iter)
+        json.dump(results, f)
 
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--dataset", default="lamp_5_dev", type=str)
+    parser.add_argument("-k", "--k", default=None, type=int)
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
     parser.add_argument('-fgt', '--feats_gt_only', default=True, action=argparse.BooleanOptionalAction)
     parser.add_argument('-l', "--level", default=1, type=int)
