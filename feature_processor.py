@@ -166,7 +166,7 @@ class FeatureProcessor():
                     feat_desc = f"-{self.feat_name_mappings()[feature]['desc']} is {pers_value}, mean value for all the writers is {mean_value}, which makes it {std_value} standard deviations away from the mean."
                 else:
                     most_used_words = [f"{w}: {p}" for w, p in list(author_features[feature][i].items())[:10]]
-                    feat_desc = f"-The list of most frequently used words of the writer, alongside the percentages they appear in user's dictionary: {most_used_words}"
+                    feat_desc = f"-The list of most frequently used words of the writer, alongside the percentages they appear in writer's dictionary: {most_used_words}"
                 proc_author_features.append(feat_desc)
             all_author_features.append(proc_author_features)
         return all_author_features
