@@ -35,7 +35,7 @@ os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
-LLMs = ["GPT-4o-mini", "LLAMA-3.1-8B", "GEMMA-2-9B"]
+LLMs = ["LLAMA-3.1-8B", "GEMMA-2-9B"]
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
 if not args.k:
     k = get_k(retr_texts)
@@ -89,12 +89,8 @@ for model_name in LLMs:
             features = all_features[i]
         prompt = prepare_prompt(dataset, query, llm, context, features)
         prompt = [{"role": "user", "content": prompt}]
-        print(prompt[0]["content"])
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
-        print(f"Pred: {res}")
-        print(f"GT: {gts[i]}")
-        print()
         end_bot_time = time.time()
         id = ids[i] if dataset_name == "lamp" else i
 

@@ -7,13 +7,16 @@ from textblob import TextBlob
 import textstat
 import spacy
 import nltk
-from nltk.tokenize import sent_tokenize, word_tokenize
+from nltk.tokenize import word_tokenize
 from nltk import pos_tag
-from nltk.stem import WordNetLemmatizer
-from nltk.corpus import stopwords, wordnet
-from sentence_transformers import SentenceTransformer
+from nltk.corpus import stopwords
 
 class FeatureProcessor():
+
+    def __init__(self) -> None:
+        nltk.download('punkt', quiet=True)      
+        nltk.download('stopwords', quiet=True)  
+        nltk.download('averaged_perceptron_tagger', quiet=True)
 
     def get_vocabulary_richness(self, texts):
         all_texts = " ".join(texts)
@@ -69,6 +72,7 @@ class FeatureProcessor():
 
     def get_word_frequency(self, texts):
 
+    
         texts = " ".join(texts)
         words = word_tokenize(texts.lower())
         stop_words = set(stopwords.words('english'))
