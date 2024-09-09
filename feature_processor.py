@@ -122,17 +122,19 @@ class FeatureProcessor():
         else:
             return dict()
 
-    def save_feat_file(self, dataset, obj):
-        file_path = os.path.join("features", f"{dataset}.json")
+    def save_feat_file(self, file_name, obj):
+        file_path = os.path.join("features", f"{file_name}.json")
         with open(file_path, "w") as f:
             json.dump(obj, f)
 
     def get_auth_features(self, dataset, feature_list, retr_gts, retr_texts=None):
         if retr_texts:
+            file_name = f"{dataset}_texts"
             author_texts = []
             for retr_text, retr_gt in zip(retr_texts, retr_gts): 
                 author_texts.append([f"{gt}: {text}" for text, gt in zip(retr_text, retr_gt)])
         else:
+            file_name = f"{dataset}_no_texts"
             author_texts = retr_gts
         author_features = self.get_feat_file(dataset)
         for feature in feature_list:
@@ -149,7 +151,7 @@ class FeatureProcessor():
                     author_features[feature] = [self.get_adjective_usage(text) for text in author_texts]
                 elif feature == "PU":
                     author_features[feature] = [self.get_pronoun_usage(text) for text in author_texts]
-            self.save_feat_file(dataset, author_features)
+            self.save_feat_file(file_name, author_features)
         return author_features
     
     def get_features(self, dataset, feature_list, retr_gts, retr_texts=None):
