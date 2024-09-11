@@ -1,6 +1,5 @@
 model,features,retriever,k,gen_step_count,gt_only,rouge1,rouge2,rougeL,rougeLsum
-LLAMA-3.1-8B,MSWC:SP,contriever,5,1,True,0.4336,0.2391,0.3844,0.3844
-LLAMA-3.1-8B,MSWC,contriever,5,1,True,0.4372,0.2401,0.386,0.386
-LLAMA-3.1-8B,None,contriever,5,1,False,0.4449,0.2495,0.3937,0.3933
-LLAMA-3.1-8B,WF,contriever,5,1,True,0.4308,0.2341,0.3774,0.3773
-LLAMA-3.1-8B,SP,contriever,5,1,True,0.4405,0.2426,0.39,0.3899
+GEMMA-2-9B,WF,contriever,5,1,True,0.4845,0.2788,0.4362,0.4361
+GEMMA-2-9B,None,contriever,5,1,True,0.4826,0.2788,0.4351,0.4348
+GEMMA-2-9B,WF,contriever,5,1,True,0.4592,0.2472,0.4067,0.4065
+GEMMA-2-9B,None,contriever,5,1,True,0.4601,0.2482,0.4081,0.4081

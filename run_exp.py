@@ -35,10 +35,12 @@ os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
-LLMs = ["LLAMA-3.1-8B", "GEMMA-2-9B"]
+LLMs = ["QWEN-2-7B-INSTRUCT", "GEMMA-2-9B", "GEMMA-2-27B"]
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
 if not args.k:
     k = get_k(retr_texts)
+else:
+    k = args.k
 
 all_context = retriever.get_context(queries, retr_texts, retr_gts, k) 
 if args.features:
@@ -86,10 +88,7 @@ for model_name in LLMs:
         if args.features:
             features = all_features[i]
         else:
-            if args.step_gen > 1:
-                raise Exception("For multi-step generation, features can't be empty!")
-            else:
-                features = None
+            features = None
 
         prompt = prepare_prompt(dataset, query, llm, context, features)
         prompt = [{"role": "user", "content": prompt}]
@@ -103,6 +102,7 @@ for model_name in LLMs:
             # print(prompt[0]["content"])
             res = llm.prompt_chatbot(prompt)
             # print(res)
+        # print(gts[i])
 
         end_bot_time = time.time()
         all_res.append({
