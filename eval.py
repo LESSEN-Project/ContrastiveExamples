@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import os
+import re
 from evaluate import load
 
 from utils import get_args
@@ -26,18 +27,23 @@ os.makedirs(evals_dir, exist_ok=True)
 out_gts = dataset.get_gt()
 all_res = []
 models = []
-cols = ["model", "method", "retriever"]
+cols = ["model", "features", "retriever", "k", "gen_step_count", "gt_only" ]
 
 rouge = load("rouge")
 cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum"])
 
 for file in os.listdir(preds_dir):
     if file.startswith(args.dataset):
-        retriever = file.split("_")[-1][:-5]
-        features = file.split("_")[-2]
+
+        params = file[:-5].split("_")
+        gt_only = re.findall(r'\((.*?)\)', params[-1])[0]
+        gen_step_count = re.findall(r'\((.*?)\)', params[-2])[0]
+        k = re.findall(r'\((.*?)\)', params[-3])[0]
+        retriever = params[-4]
+        features = file.split("_")[-5]
         if features != "None":
             features = ":".join(eval(features))
-        model = file.split("_")[-3]
+        model = file.split("_")[-6]
 
         with open(os.path.join(preds_dir, file), "r") as f:
             preds = json.load(f)["golds"]
@@ -46,11 +52,14 @@ for file in os.listdir(preds_dir):
         if len(preds) != len(out_gts):
             continue
 
-        print(model, retriever, features)
+        print(model, retriever, features, gen_step_count, gt_only, k)
         res_dict = {    
             "model": model,
-            "method": features,
+            "features": features,
             "retriever": retriever,
+            "k": k,
+            "gen_step_count": gen_step_count,
+            "gt_only": gt_only
         }
         rouge_results = rouge.compute(predictions=preds, references=out_gts)
         all_res.append(res_dict | rouge_results)

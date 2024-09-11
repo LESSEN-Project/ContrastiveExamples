@@ -32,13 +32,22 @@ class FeatureProcessor():
     def get_subjectivity(self, texts):
         return np.mean([TextBlob(text).sentiment.subjectivity for text in texts])
 
-    def get_passive_voice_count(self, texts):
-        pass_count = []
-        nlp = spacy.load('en_core_web_sm')
-        for text in texts:
-            doc = nlp(text)
-            pass_count.append(sum(1 for token in doc if token.dep_ == "nsubjpass"))
-        return np.mean(pass_count)
+    def get_passive_voice_usage(self, texts):
+
+        texts = ".".join(texts)
+        nlp = spacy.load("en_core_web_sm")
+        doc = nlp(texts)
+        
+        total_sentences = 0
+        passive_sentences = 0
+        
+        for sent in doc.sents:
+            total_sentences += 1
+            if any(token.dep_ == "nsubjpass" for token in sent):
+                passive_sentences += 1
+        
+        passive_percentage = (passive_sentences / total_sentences) * 100 if total_sentences > 0 else 0
+        return round(passive_percentage, 2)
                             
     def get_readability_score(self, texts):
         return np.mean([textstat.flesch_kincaid_grade(text) for text in texts])
@@ -72,7 +81,6 @@ class FeatureProcessor():
 
     def get_word_frequency(self, texts):
 
-    
         texts = " ".join(texts)
         words = word_tokenize(texts.lower())
         stop_words = set(stopwords.words('english'))
@@ -110,6 +118,14 @@ class FeatureProcessor():
             "PU": {
                 "full_name": "Average Pronoun Usage Percentage",
                 "desc": "The percentage (between 0-100) of pronouns the writer uses on average"                  
+            },
+            "SUBJ": {
+                "full_name": "Subjectivity",
+                "desc": "Average subjectivity for the writer (between 0 to 1, 1 being the most subjective)"
+            },
+            "PASSU": {
+                "full_name": "Average Passive Voice Usage Percentage",
+                "desc": "The percentage (between 0-100) of sentences the writer forms in passive voice on average"
             }
         }
 
@@ -128,7 +144,7 @@ class FeatureProcessor():
             json.dump(obj, f)
 
     def get_auth_features(self, dataset, feature_list, retr_gts, retr_texts=None):
-        if retr_texts:
+        if retr_texts and retr_texts != retr_gts:
             file_name = f"{dataset}_texts"
             author_texts = []
             for retr_text, retr_gt in zip(retr_texts, retr_gts): 
@@ -136,9 +152,10 @@ class FeatureProcessor():
         else:
             file_name = f"{dataset}_no_texts"
             author_texts = retr_gts
-        author_features = self.get_feat_file(dataset)
+        author_features = self.get_feat_file(file_name)
         for feature in feature_list:
             if feature not in author_features.keys():
+                print(f"Preparing {feature}")
                 if feature == "MSWC":
                     author_features[feature] = [self.get_average_sentence_length(text) for text in author_texts]
                 elif feature == "SP":
@@ -151,6 +168,10 @@ class FeatureProcessor():
                     author_features[feature] = [self.get_adjective_usage(text) for text in author_texts]
                 elif feature == "PU":
                     author_features[feature] = [self.get_pronoun_usage(text) for text in author_texts]
+                elif feature == "SUBJ":
+                    author_features[feature] = [self.get_subjectivity(text) for text in author_texts]
+                elif feature == "PASSU":
+                    author_features[feature] = [self.get_passive_voice_usage(text) for text in author_texts]
             self.save_feat_file(file_name, author_features)
         return author_features
     
