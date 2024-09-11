@@ -190,6 +190,7 @@ class FeatureProcessor():
                     mean_value = round(mean_features[feature], 3)      
                     pers_value = round(author_features[feature][i], 3)
                     std_value = round(abs(pers_value-mean_value)/std_features[feature], 3) 
+                    # feat_desc = f"-{self.feat_name_mappings()[feature]['desc']} is {pers_value}"
                     feat_desc = f"-{self.feat_name_mappings()[feature]['desc']} is {pers_value}, mean value for all the writers is {mean_value}, which makes it {std_value} standard deviations away from the mean."
                 else:
                     most_used_words = [f"{w}: {p}" for w, p in list(author_features[feature][i].items())[:10]]

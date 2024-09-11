@@ -23,7 +23,7 @@ def get_args():
     parser.add_argument("-d", "--dataset", default="lamp_5_dev", type=str)
     parser.add_argument("-k", "--k", default=None, type=int)
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
-    parser.add_argument('-fgt', '--feats_gt_only', default=False, action=argparse.BooleanOptionalAction)
+    parser.add_argument('-fgt', '--feats_gt_only', default=True, action=argparse.BooleanOptionalAction)
     parser.add_argument('-s', "--step_gen", default=1, type=int)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
     return parser.parse_args()
@@ -98,3 +98,10 @@ def get_k(retr_texts):
         return 20
     else:
         return 5
+    
+def parse_json(output):
+    try:
+        output = json.loads(output)
+    except Exception as e:
+        print(e)
+    return output

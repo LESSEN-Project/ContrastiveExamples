@@ -10,10 +10,9 @@ def prepare_prompt(dataset, query, llm, examples, features=None, llm_gen=None):
             features = "\n".join(features)
         return init_prompt.format(query=query, examples=context, features=features)
     else:
-        if not features:
-            raise Exception("For multi-step generation, features can't be empty!")
         context = llm.prepare_context(init_prompt, f"{query}\n{features}\n{llm_gen}", examples) 
-        features = "\n".join(features)
+        if features:
+            features = "\n".join(features)
         return init_prompt.format(query=query, examples=context, features=features, llm_gen=llm_gen)
     
 def strip_all(text: str) -> str:
@@ -70,9 +69,10 @@ def _ss_lamp_prompt_4() -> str:
                      Title:""")
 
 def _ms_lamp_prompt_4():
-    return strip_all("""You are a news editor that delegated the task of generating titles for articles to your new intern. The intern has checked your past work to generate 
-                     a title in your style. To improve the quality, you will check intern's generations and change them according to your standards. You will first receive similar
-                     article-title pairs from your past works to remind you of your writing style:
+    return strip_all("""You are a news editor that delegated the task of generating titles for articles to your new intern. 
+                     The intern has checked your past work to generate a title in your style. 
+                     To improve the quality, you will check intern's generations and change them according to your standards. 
+                     You will first receive similar article-title pairs from your past works to remind you of your writing style:
                      <similarpairs>
                      {examples}
                      </similarpairs>
@@ -91,7 +91,6 @@ def _ms_lamp_prompt_4():
                       1) Explanation about what the intern has missed by using the features, explaining how it can be improved to match your style of generating titles.
                       2) The title you would give to the article, using the provided information.
                      You output should be in json format, having the explanation and the title as keys. Only output the json and nothing else.""")
-
 
 def _ss_lamp_prompt_5() -> str:
     return strip_all("""You are a scholar that generates titles for abstracts. You will be provided a set of features to help you understand your writing style.
