@@ -29,13 +29,13 @@ else:
 gts = dataset.get_gt()
 retriever = Retriever(dataset, args.retriever)
 
-MAX_NEW_TOKENS = 64 if args.step_gen == 1 else 256
+MAX_NEW_TOKENS = 64 if args.step_gen == 1 else 128
 pred_path = "preds"
 os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
-LLMs = ["QWEN-2-7B-INSTRUCT", "GEMMA-2-9B", "GEMMA-2-27B"]
+LLMs = ["GEMMA-2-9B", "GEMMA-2-27B"]
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
 if not args.k:
     k = get_k(retr_texts)
@@ -45,15 +45,12 @@ else:
 all_context = retriever.get_context(queries, retr_texts, retr_gts, k) 
 if args.features:
     feature_processor = FeatureProcessor()
-    if args.feats_gt_only:
-        all_features = feature_processor.get_features(dataset.tag, args.features, retr_gts)
-    else:
-        all_features = feature_processor.get_features(dataset.tag, args.features, retr_gts, retr_texts)
+    all_features = feature_processor.get_features(dataset.tag, args.features, retr_texts, retr_gts)
 
-print(f"Running experiments for {args.dataset} with Features: {args.features} (Gen. step count: {args.step_gen}, Gt only: {args.feats_gt_only}), Retriever: {args.retriever}, and K: {k}")
+print(f"Running experiments for {args.dataset} with Features: {args.features}, Gen. step count: {args.step_gen}, Retriever: {args.retriever}, and K: {k}")
 sys.stdout.flush()
 for model_name in LLMs:
-    exp_name = f"{args.dataset}_{model_name}_{args.features}_{args.retriever}_K({k})_SG({args.step_gen})_GT({args.feats_gt_only})"
+    exp_name = f"{args.dataset}_{model_name}_{args.features}_{args.retriever}_K({k})_SG({args.step_gen})"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -87,23 +84,22 @@ for model_name in LLMs:
         context = all_context[i]            
         if args.features:
             features = all_features[i]
-        else:
-            features = None
 
-        prompt = prepare_prompt(dataset, query, llm, context, features)
+        prompt = prepare_prompt(dataset, query, llm, examples=context, features=features)
         prompt = [{"role": "user", "content": prompt}]
         start_bot_time = time.time()    
         res = llm.prompt_chatbot(prompt)
-        # print(res)
+        # print(f"Pred: {res}")
+
         id = ids[i] if dataset_name == "lamp" else i
         if args.step_gen > 1:
-            prompt = prepare_prompt(dataset, query, llm, context, features, res)
+            prompt = prepare_prompt(dataset, query, llm, features=features, llm_gen=res)
             prompt = [{"role": "user", "content": prompt}]
             # print(prompt[0]["content"])
             res = llm.prompt_chatbot(prompt)
             # print(res)
-        # print(gts[i])
-
+        # print(f"GT: {gts[i]}")
+        print()
         end_bot_time = time.time()
         all_res.append({
                 "id": id,

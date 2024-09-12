@@ -1,5 +1,5 @@
-model,features,retriever,k,gen_step_count,gt_only,rouge1,rouge2,rougeL,rougeLsum
-GEMMA-2-9B,WF,contriever,5,1,True,0.4845,0.2788,0.4362,0.4361
-GEMMA-2-9B,None,contriever,5,1,True,0.4826,0.2788,0.4351,0.4348
-GEMMA-2-9B,WF,contriever,5,1,True,0.4592,0.2472,0.4067,0.4065
-GEMMA-2-9B,None,contriever,5,1,True,0.4601,0.2482,0.4081,0.4081
+model,features,retriever,k,gen_step_count,rouge1,rouge2,rougeL,rougeLsum
+GEMMA-2-9B,None,contriever,5,1,0.4825,0.2786,0.4346,0.435
+GEMMA-2-9B,WF,contriever,5,1,0.4845,0.2786,0.4357,0.436
+GEMMA-2-27B,None,contriever,5,1,0.4832,0.2752,0.431,0.431
+GEMMA-2-9B,None,contriever,7,1,0.4859,0.2827,0.4384,0.4386

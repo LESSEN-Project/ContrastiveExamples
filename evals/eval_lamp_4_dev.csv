@@ -1,2 +1,15 @@
-model,features,retriever,k,gen_step_count,gt_only,rouge1,rouge2,rougeL,rougeLsum
-GEMMA-2-9B,WF,all-mpnet-base-v2,20,1,True,0.2084,0.0846,0.1936,0.1939
+model,features,retriever,k,gen_step_count,rouge1,rouge2,rougeL,rougeLsum
+GEMMA-2-9B,SMOG,contriever,20,1,0.2063,0.083,0.1918,0.192
+GEMMA-2-9B,WF,all-mpnet-base-v2,50,1,0.2095,0.0849,0.1963,0.1965
+GEMMA-2-27B,WF,all-mpnet-base-v2,20,1,0.121,0.041,0.1124,0.1126
+GEMMA-2-27B,None,contriever,20,1,0.2206,0.0886,0.2039,0.2036
+GEMMA-2-9B,WF,all-mpnet-base-v2,20,1,0.2082,0.0848,0.1935,0.1938
+GEMMA-2-9B,WF:SP:SUBJ,contriever,50,1,0.2102,0.0836,0.196,0.196
+GEMMA-2-9B,WF,contriever,20,1,0.2086,0.0825,0.1952,0.1955
+GEMMA-2-9B,None,contriever,50,1,0.2096,0.084,0.1948,0.1949
+GEMMA-2-9B-ABLT,None,contriever,20,1,0.2074,0.0827,0.1933,0.1937
+GEMMA-2-9B,None,contriever,20,1,0.206,0.0827,0.1921,0.1923
+QWEN-2-7B-INSTRUCT,None,contriever,20,1,0.166,0.0538,0.1532,0.153
+GEMMA-2-9B,DPF,contriever,50,1,0.203,0.0796,0.1886,0.1886
+GEMMA-2-9B,NEF,contriever,50,1,0.2078,0.0832,0.1935,0.1937
+GEMMA-2-9B,VR,contriever,50,1,0.2054,0.0803,0.1908,0.191

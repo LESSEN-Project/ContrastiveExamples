@@ -27,7 +27,7 @@ os.makedirs(evals_dir, exist_ok=True)
 out_gts = dataset.get_gt()
 all_res = []
 models = []
-cols = ["model", "features", "retriever", "k", "gen_step_count", "gt_only"]
+cols = ["model", "features", "retriever", "k", "gen_step_count"]
 
 rouge = load("rouge")
 cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum"])
@@ -35,7 +35,6 @@ cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum"])
 for file in os.listdir(preds_dir):
     if file.startswith(args.dataset):
         params = file[len(args.dataset)+1:-5].split("_")
-        gt_only = re.findall(r'\((.*?)\)', params[5])[0]
         gen_step_count = re.findall(r'\((.*?)\)', params[4])[0]
         k = re.findall(r'\((.*?)\)', params[3])[0]
         retriever = params[2]
@@ -53,14 +52,13 @@ for file in os.listdir(preds_dir):
         if len(preds) != len(out_gts):
             continue
 
-        print(model, retriever, features, gen_step_count, gt_only, k)
+        print(model, retriever, features, gen_step_count, k)
         res_dict = {    
             "model": model,
             "features": features,
             "retriever": retriever,
             "k": k,
             "gen_step_count": gen_step_count,
-            "gt_only": gt_only,
         }
         rouge_results = rouge.compute(predictions=preds, references=out_gts)
         all_res.append(res_dict | rouge_results)
