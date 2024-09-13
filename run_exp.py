@@ -7,7 +7,7 @@ import subprocess
 
 from models import LLM
 from utils import get_args, get_k
-from prompts import prepare_prompt
+from prompts import prepare_res_prompt, prepare_summary_prompt
 from exp_datasets import LampDataset, AmazonDataset
 from feature_processor import FeatureProcessor
 from retriever import Retriever
@@ -29,7 +29,7 @@ else:
 gts = dataset.get_gt()
 retriever = Retriever(dataset, args.retriever)
 
-MAX_NEW_TOKENS = 64 if args.step_gen == 1 else 128
+MAX_NEW_TOKENS = 64
 pred_path = "preds"
 os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
@@ -47,10 +47,10 @@ if args.features:
     feature_processor = FeatureProcessor()
     all_features = feature_processor.get_features(dataset.tag, args.features, retr_texts, retr_gts)
 
-print(f"Running experiments for {args.dataset} with Features: {args.features}, Gen. step count: {args.step_gen}, Retriever: {args.retriever}, and K: {k}")
+print(f"Running experiments for {args.dataset} with Features: {args.features}, Retriever: {args.retriever}, Summary: {args.summary}, and K: {k}")
 sys.stdout.flush()
 for model_name in LLMs:
-    exp_name = f"{args.dataset}_{model_name}_{args.features}_{args.retriever}_K({k})_SG({args.step_gen})"
+    exp_name = f"{args.dataset}_{model_name}_{args.features}_{args.retriever}_K({k})_Sum({args.summary})"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -72,6 +72,8 @@ for model_name in LLMs:
     all_context = all_context[len(all_res):]
     if args.features:
         all_features = all_features[len(all_res):]
+    else:
+        features = None
 
     print(f"Starting from sample no. {len(all_res)}")
     start_time = time.time()
@@ -85,21 +87,21 @@ for model_name in LLMs:
         if args.features:
             features = all_features[i]
 
-        prompt = prepare_prompt(dataset, query, llm, examples=context, features=features)
+        start_bot_time = time.time() 
+        if args.summary:
+            sum_prompt = prepare_summary_prompt(dataset, llm, context, features)
+            sum_prompt = [{"role": "user", "content": sum_prompt}]
+            res = llm.prompt_chatbot(sum_prompt, gen_params={"max_new_tokens": 256})
+            features = [res]
+
+        prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features)
         prompt = [{"role": "user", "content": prompt}]
-        start_bot_time = time.time()    
+           
         res = llm.prompt_chatbot(prompt)
         # print(f"Pred: {res}")
 
         id = ids[i] if dataset_name == "lamp" else i
-        if args.step_gen > 1:
-            prompt = prepare_prompt(dataset, query, llm, features=features, llm_gen=res)
-            prompt = [{"role": "user", "content": prompt}]
-            # print(prompt[0]["content"])
-            res = llm.prompt_chatbot(prompt)
-            # print(res)
         # print(f"GT: {gts[i]}")
-        print()
         end_bot_time = time.time()
         all_res.append({
                 "id": id,

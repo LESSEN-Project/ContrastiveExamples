@@ -40,7 +40,12 @@ class LLM:
         config.read(os.path.join(Path(__file__).absolute().parent, "model_config.cfg"))
         return config
     
-    def prompt_chatbot(self, prompt, chat_history=[], stream=False):
+    def prompt_chatbot(self, prompt, gen_params=None, chat_history=[], stream=False):
+
+        if not gen_params:
+            gen_params = self.gen_params
+        else:
+            gen_params = self.get_gen_params(gen_params)
 
         avail_space = self.get_avail_space(prompt + chat_history)
         if not avail_space:
@@ -50,16 +55,16 @@ class LLM:
                 message = [prompt[0]] + chat_history + [prompt[1]]
             else:
                 message = chat_history + prompt
-            response = self.model.chat.completions.create(model=self.repo_id, messages=message, **self.gen_params)
+            response = self.model.chat.completions.create(model=self.repo_id, messages=message, **gen_params)
             response = response.choices[0].message.content
         elif self.family == "CLAUDE":
             if len(prompt) > 1:
                 sys_msg = prompt[0]["content"]
                 message = chat_history + [prompt[1]]
-                response = self.model.messages.create(model=self.repo_id, messages=message, system=sys_msg, **self.gen_params)
+                response = self.model.messages.create(model=self.repo_id, messages=message, system=sys_msg, **gen_params)
             else:
                 message = chat_history + prompt
-                response = self.model.messages.create(model=self.repo_id, messages=message, **self.gen_params)
+                response = self.model.messages.create(model=self.repo_id, messages=message, **gen_params)
             response = response.content[0].text   
         elif self.family == "GEMINI":
             if len(prompt) > 1:
@@ -73,7 +78,7 @@ class LLM:
                     "role": role,
                     "parts": [turn["content"]]
                 })
-            response = self.model.generate_content(messages, generation_config=genai.types.GenerationConfig(**self.gen_params))
+            response = self.model.generate_content(messages, generation_config=genai.types.GenerationConfig(**gen_params))
             response = response.text     
         else:
             if self.family in ["MISTRAL", "GEMMA"]:
@@ -87,10 +92,10 @@ class LLM:
                 else:
                     message = chat_history + prompt
             if self.model_type == "GGUF":
-                response = self.model.create_chat_completion(message, **self.gen_params)
+                response = self.model.create_chat_completion(message, **gen_params)
                 response = response["choices"][-1]["message"]["content"]
             else:
-                pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, **self.gen_params)
+                pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, **gen_params)
                 response = pipe(message)[0]["generated_text"][-1]["content"]
         if stream:
             self.stream_output(response)
