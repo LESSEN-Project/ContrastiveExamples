@@ -195,9 +195,6 @@ class FeatureProcessor():
         author_texts = retr_gts
         if retr_texts != retr_gts:
             full_auth_texts = retr_texts
-            # full_auth_texts = []
-            # for retr_text, retr_gt in zip(retr_texts, retr_gts): 
-            #     full_auth_texts.append([f"{gt}: {text}" for text, gt in zip(retr_text, retr_gt)])
         else:
             full_auth_texts = author_texts
         author_features = self.get_feat_file(file_name)
@@ -232,7 +229,7 @@ class FeatureProcessor():
             self.save_feat_file(file_name, author_features)
         return author_features
     
-    def get_features(self, dataset, feature_list, retr_texts, retr_gts):
+    def get_features(self, dataset, feature_list, retr_texts, retr_gts, top_k=10):
         author_features = self.get_auth_features(dataset, feature_list, retr_texts, retr_gts)
         all_author_features = []
         mean_features = dict()
@@ -247,10 +244,9 @@ class FeatureProcessor():
                     mean_value = round(mean_features[feature], 3)      
                     pers_value = round(author_features[feature][i], 3)
                     std_value = round(abs(pers_value-mean_value)/std_features[feature], 3) 
-                    # feat_desc = f"-{self.feat_name_mappings()[feature]['desc']} is {pers_value}"
                     feat_desc = f"-{self.feat_name_mappings()[feature]['desc']} is {pers_value}, mean value for all the writers is {mean_value}, which makes it {std_value} standard deviations away from the mean."
                 else:
-                    most_used_vals = [f"{w}: {p}" for w, p in author_features[feature][i][:10]]
+                    most_used_vals = [w for w, _ in author_features[feature][i][:top_k]]
                     feat_desc = f"-{self.feat_name_mappings()[feature]['desc']}: {most_used_vals}"
                 proc_author_features.append(feat_desc)
             all_author_features.append(proc_author_features)

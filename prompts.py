@@ -1,20 +1,21 @@
-def prepare_prompt(dataset, query, llm, examples=None, features=None, llm_gen=None):
-    step = 2 if llm_gen else 1
+def prepare_res_prompt(dataset, query, llm, examples=None, features=None):
     if dataset.name == "lamp":
-        init_prompt = lamp_prompts(dataset.num, step)
+        init_prompt = lamp_prompts(dataset.num)
     elif dataset.name == "amazon":
-        init_prompt = amazon_prompts(step)
-    if not llm_gen:
-        if step == 1:
-            features = "\n".join(features)
-        else:
-            features = None
-        context = llm.prepare_context(init_prompt, f"{query}\n{features}", examples) 
-        return init_prompt.format(query=query, examples=context, features=features)
-    else:
+        init_prompt = amazon_prompts()
+    if features:
         features = "\n".join(features)
-        return init_prompt.format(query=query, features=features, llm_gen=llm_gen)
-    
+    context = llm.prepare_context(init_prompt, f"{query}\n{features}", examples) 
+    return init_prompt.format(query=query, examples=context, features=features)
+
+def prepare_summary_prompt(dataset, llm, examples, features):
+    if dataset.name == "lamp":
+        init_prompt = lamp_prompts(dataset.num, True)    
+    if features:
+        features = "\n".join(features)        
+    context = llm.prepare_context(init_prompt, f"{features}", examples) 
+    return init_prompt.format(examples=context, features=features)
+
 def strip_all(text: str) -> str:
     return "\n".join(line.strip() for line in text.splitlines())    
 
@@ -38,19 +39,86 @@ def _ss_amazon_prompt() -> str:
                      {query}
                      Review:""")
 
-def lamp_prompts(dataset_num: int, step: int) -> str:
-    if step == 1:
+def lamp_prompts(dataset_num: int, summary=False) -> str:
+    if summary:
+        ss_lamp_prompts = {
+            4: _get_lamp_feat_4,
+            5: _get_lamp_feat_5,
+            7: _get_lamp_feat_7
+        }
+    else:
         ss_lamp_prompts = {
             4: _ss_lamp_prompt_4,
             5: _ss_lamp_prompt_5,
             7: _ss_lamp_prompt_7
         }
-        return ss_lamp_prompts.get(dataset_num)()
-    else:
-        ms_lamp_prompts = {
-            4: _ms_lamp_prompt_4
-        }
-        return ms_lamp_prompts.get(dataset_num)()
+    return ss_lamp_prompts.get(dataset_num)()
+
+def _get_lamp_feat_4():
+    return strip_all("""Your task is to highlight how a news editor formulates their titles for articles. 
+                     You will receive a set of features and article-title pairs from the editor's past work to help you understand their style.
+                     Here is the article-title pairs:
+                     <pairs>
+                     {examples}
+                     </pairs>
+                     Here are features:
+                     <features>
+                     {features}
+                     </features>
+                     Using the features and pairs, summarize the following concepts explaining the writing style of the editor: 
+                     - How they use words
+                     - How they formulate sentences
+                     - Which words they use frequently
+                     - Tone and sentiment
+                     - Their sentence structure
+                     You can include any other information that you think is important to capture the writing style of the editor.
+                     Your output should be a bulleted list, each item explaining one crucial aspect about the writing style and how the editor constructs titles. 
+                     Make the items concise, and don't include more than 5 items.
+                     Do not output anything else.""")
+
+def _get_lamp_feat_5():
+    return strip_all("""Your task is to highlight how a scholar formulates their titles for abstracts. 
+                     You will receive a set of features and abstract-title pairs from the scholar's past work to help you understand their style.
+                     Here is the abstract-title pairs:
+                     <pairs>
+                     {examples}
+                     </pairs>
+                     Here are features:
+                     <features>
+                     {features}
+                     </features>
+                     Using the features and pairs, summarize the following concepts explaining the writing style of the scholar: 
+                     - How they use words
+                     - How they formulate sentences
+                     - Which words they use frequently
+                     - Tone and sentiment
+                     - Their sentence structure
+                     You can include any other information that you think is important to capture the writing style of the scholar.
+                     Your output should be a bulleted list, each item explaining one crucial aspect about the writing style and how the scholar constructs titles. 
+                     Make the items concise, and don't include more than 5 items.
+                     Do not output anything else.""")
+
+def _get_lamp_feat_7():
+    return strip_all("""Your task is to highlight how a twitter user writes their tweets. 
+                     You will receive a set of features and past tweets from the user to help you understand their style.
+                     Here are the past tweets:
+                     <pasttweets>
+                     {examples}
+                     </pasttweets>
+                     Here are features:
+                     <features>
+                     {features}
+                     </features>
+                     Using the features and past tweets, summarize the following concepts explaining the writing style of the user: 
+                     - How they use words
+                     - How they formulate sentences
+                     - Which words they use frequently
+                     - Tone and sentiment
+                     - Their sentence structure
+                     You can include any other information that you think is important to capture the writing style of the user.
+                     Your output should be a bulleted list, each item explaining one crucial aspect about the writing style and how the user constructs tweets. 
+                     Make the items concise, and don't include more than 5 items.
+                     Do not output anything else.""")
 
 def _ss_lamp_prompt_4() -> str:
     return strip_all("""You are a news editor that generates titles for articles. You will be provided a set of features to help you understand your writing style.
@@ -58,7 +126,7 @@ def _ss_lamp_prompt_4() -> str:
                      <similarpairs>
                      {examples}
                      </similarpairs>
-                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other writers:
+                     Now you will receive features shedding light into how you use words and formulate sentences:
                      <features>
                      {features}
                      </features>
@@ -68,39 +136,13 @@ def _ss_lamp_prompt_4() -> str:
                      {query}
                      Title:""")
 
-def _ms_lamp_prompt_4():
-    return strip_all("""You are a news editor. You have an intern that is tasked with generating titles for articles in your writing style.
-                     You asked the intern to make the titles indistinguishable from yours, so someone who is familiar with your work would think it is generated by you.
-                     The intern has checked your past work to generate a title in your style. 
-                     Before publishing it, you want to check intern's generations and assess how much the intern was able to capture your style. 
-                     You will receive a set of features shedding light into how you use words and formulate sentence: 
-                     <features>
-                     {features}
-                     </features>
-                     Now, you will receive the article and the title generated by the intern:
-                     <article>
-                     {query}
-                     </article>
-                     <interntitle>
-                     {llm_gen}
-                     </interntitle>
-                     With the given features, evaluate the generation of the intern and propose an improved version of the title which would reflect your writing style better.  
-                     Your output would consist of two parts:
-                      1) Evaluation: Evaluating intern's work and assessing how it can be improved to catch your style. It should be concise, not excedding two sentences.
-                      2) Title: An improved version of the title 
-                     Rules:
-                      - Don't put any information in the title that is not given in the article
-                      - Your goal is not to make the title more catchy, but to make it sound like you
-                      - Make minimal changes to the intern's title
-                     You output should be in json format, having the evaluation and the title as keys. Only output the json and nothing else.""")
-
 def _ss_lamp_prompt_5() -> str:
     return strip_all("""You are a scholar that generates titles for abstracts. You will be provided a set of features to help you understand your writing style.
                      First feature you will receive is similar abstract-title pairs from your past works:
                      <similarpairs>
                      {examples}
                      </similarpairs>
-                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other writers:
+                     Now you will receive features shedding light into how you use words and formulate sentences:
                      <features>
                      {features}
                      </features>
@@ -111,16 +153,16 @@ def _ss_lamp_prompt_5() -> str:
                      Title:""")
 
 def _ss_lamp_prompt_7() -> str:
-    return strip_all("""You are a Twitter user who rephrases their own tweets. You will be provided a set of features to help you understand your writing style.
-                     First feature you will receive is similar tweets from your past ones:
-                     <similartweets>
+    return strip_all("""You are a Twitter user who wants to rephrase their own tweets. You will be provided a set of features to help you understand your writing style.
+                     First feature you will receive is your past tweets:
+                     <pasttweets>
                      {examples}
-                     </similartweets>
-                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other twiiter users:
+                     </pasttweets>
+                     Now you will receive features shedding light into how you use words and formulate sentences:
                      <features>
                      {features}
                      </features>
-                     Using the features, rephrase the tweet. If you haven't received any features besides similar tweets, only make use of them. 
+                     Using the features, rephrase the tweet. If you haven't received any features besides past tweets, only make use of them. 
                      Only output the rephrased tweet and nothing else.
                      Tweet:
                      {query}
