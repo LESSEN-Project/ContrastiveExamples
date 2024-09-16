@@ -62,8 +62,6 @@ class Retriever:
         all_examples = []
         _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
         for i, query in enumerate(queries):
-            if isinstance(query, list):
-                query = query[0]
             retr_text = retr_texts[i]
             retr_gt = retr_gts[i]
             if len(all_idxs) > i:

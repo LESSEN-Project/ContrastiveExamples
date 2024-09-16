@@ -24,7 +24,8 @@ def get_args():
     parser.add_argument("-k", "--k", default=None, type=int)
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
-    parser.add_argument("-s", "--summary", default=False, action=argparse.BooleanOptionalAction)
+    parser.add_argument("-ce", "--counter_examples", default=False, action=argparse.BooleanOptionalAction)
+
     return parser.parse_args()
 
 def list_files_in_directory(root_dir):
