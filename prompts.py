@@ -1,4 +1,5 @@
-def prepare_res_prompt(dataset, query, llm, examples=None, features=None):
+def prepare_res_prompt(dataset, query, llm, examples=None, features=None, counter_examples=None):
+
     if dataset.name == "lamp":
         init_prompt = lamp_prompts(dataset.num)
     elif dataset.name == "amazon":
@@ -6,7 +7,17 @@ def prepare_res_prompt(dataset, query, llm, examples=None, features=None):
     if features:
         features = "\n".join(features)
     context = llm.prepare_context(init_prompt, f"{query}\n{features}", examples) 
-    return init_prompt.format(query=query, examples=context, features=features)
+    ce_examples = ""
+
+    if counter_examples:
+        i = 0
+        for ce_example in counter_examples:
+            ce_context = llm.prepare_context(init_prompt, f"{query}\n{features}\n{context}", ce_example) 
+            if context:
+                i += 1
+                ce_examples = f"{ce_examples}\n<Other Writer-{i}>\n{ce_context}\n</Other Writer-{i}>\n"
+
+    return init_prompt.format(query=query, examples=context, features=features, counter_examples=ce_examples)
 
 def strip_all(text: str) -> str:
     return "\n".join(line.strip() for line in text.splitlines())    
@@ -24,7 +35,11 @@ def _ss_amazon_prompt() -> str:
                      <features>
                      {features}
                      </features>
-                     Using the features, generate the proper review. If you haven't received any features besides similar pairs, only make use of them. 
+                     Finally, you will receive product-review pairs from other customers to help you distinguish your style from others.
+                     <otherwriters>
+                     {counter_examples}
+                     </otherwriters>
+                     Using the features, generate the proper review. If you haven't received some of the features, only make use of the provided ones. 
                      Only output the review and nothing else.
                      Product:
                      {query}
@@ -49,7 +64,11 @@ def _ss_lamp_prompt_4() -> str:
                      <features>
                      {features}
                      </features>
-                     Using the features, generate the proper title. If you haven't received any features besides similar pairs, only make use of them. 
+                     Finally, you will receive article-title pairs from other editors to help you distinguish your style from others.
+                     <otherwriters>
+                     {counter_examples}
+                     </otherwriters>
+                     Using the features, generate the proper title. If you haven't received some of the features, only make use of the provided ones. 
                      Only output the title and nothing else.
                      Article: 
                      {query}
@@ -65,7 +84,11 @@ def _ss_lamp_prompt_5() -> str:
                      <features>
                      {features}
                      </features>
-                     Using the features, generate the proper title. If you haven't received any features besides similar pairs, only make use of them. 
+                     Finally, you will receive abstract-title pairs from other scholars to help you distinguish your style from others.
+                     <otherwriters>
+                     {counter_examples}
+                     </otherwriters>
+                     Using the features, generate the proper title. If you haven't received some of the features, only make use of the provided ones. 
                      Only output the title and nothing else.
                      Abstract:
                      {query}
@@ -81,7 +104,11 @@ def _ss_lamp_prompt_7() -> str:
                      <features>
                      {features}
                      </features>
-                     Using the features, rephrase the tweet. If you haven't received any features besides past tweets, only make use of them. 
+                     Finally, you will receive tweets from other users to help you distinguish your style from others.
+                     <otherwriters>
+                     {counter_examples}
+                     </otherwriters>
+                     Using the features, rephrase the tweet. If you haven't received some of the features, only make use of the provided ones.
                      Only output the rephrased tweet and nothing else.
                      Tweet:
                      {query}
