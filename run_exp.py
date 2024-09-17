@@ -4,6 +4,7 @@ import json
 import sys
 import torch 
 import subprocess
+import copy
 
 from models import LLM
 from utils import get_args, get_k
@@ -26,8 +27,6 @@ elif args.dataset.startswith("amazon"):
 else:
     raise Exception("Dataset not known!")
 
-gts = dataset.get_gt()
-retriever = Retriever(dataset, args.retriever)
 
 MAX_NEW_TOKENS = 64 if dataset.name == "lamp" else 128
 pred_path = "preds"
@@ -43,21 +42,26 @@ if not args.k:
 else:
     k = args.k
 
+retriever = Retriever(dataset, args.retriever)
+final_feature_list = []
 all_context = retriever.get_context(queries, retr_texts, retr_gts, k) 
+
 if args.features:
     feature_processor = FeatureProcessor()
     all_features = feature_processor.get_all_features(args.dataset, args.features, retr_texts, retr_gts)
     prepared_features = feature_processor.prepare_features(all_features, args.features)
+    final_feature_list = args.features
 else:
     features = None
 
 if args.counter_examples:
     _, query_retr_res = retriever.get_retrieval_results(queries, queries)
+    final_feature_list.append("CE")
 
-print(f"Running experiments for {args.dataset} with Features: {args.features}, Retriever: {args.retriever}, and K: {k}")
+print(f"Running experiments for {args.dataset} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
 sys.stdout.flush()
 for model_name in LLMs:
-    exp_name = f"{args.dataset}_{model_name}_{args.features}_{args.retriever}_K({k}))"
+    exp_name = f"{args.dataset}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -76,10 +80,10 @@ for model_name in LLMs:
     start_time = time.time()
     print(subprocess.run("gpustat")) 
     sys.stdout.flush() 
+    cont_idx = copy.copy(len(all_res))
 
-    for i in range(len(queries) - len(all_res)):
-
-        cont_idx = len(all_res) + i
+    for _ in range(len(queries) - len(all_res)):
+        
         query = queries[cont_idx]        
         context = all_context[cont_idx]            
         if args.features:
@@ -88,24 +92,25 @@ for model_name in LLMs:
         if args.counter_examples:
             _, retr_gt_name, retr_prompt_name = dataset.get_var_names()
             ce_idxs = query_retr_res[cont_idx][-3:]
-            ce_examples = ""
+            ce_examples = []
             for ce_i, ce in enumerate(ce_idxs):
-                ce_example = ""
-                for j in range(3):
-                    retr_texts[ce][j]
-                    ce_example = f"{ce_example}\n{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}"
-                ce_examples = f"{ce_examples}\n<Other Writer-{ce_i+1}>{ce_example}\n</Other Writer-{ce_i+1}>"
-
-        print(ce_examples)
+                ce_example = []
+                max_range = len(retr_texts[ce]) if k > len(retr_texts[ce]) else k
+                for j in range(max_range):
+                    ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
+                ce_examples.append(ce_example)
+        else:
+            ce_examples = None
 
         start_bot_time = time.time() 
-        prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features)
+        prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
         prompt = [{"role": "user", "content": prompt}]
+        print(f"Number of Tokens: {llm.count_tokens(prompt)}")
            
         res = llm.prompt_chatbot(prompt)
         # print(f"Pred: {res}")
 
-        id = ids[cont_idx] if dataset_name == "lamp" else i
+        id = ids[cont_idx] if dataset_name == "lamp" else cont_idx
         # print(f"GT: {gts[cont_idx]}")
         end_bot_time = time.time()
         all_res.append({
@@ -124,6 +129,7 @@ for model_name in LLMs:
                     "golds": all_res
                 }, f)
         sys.stdout.flush()
+        cont_idx += 1 
     end_time = time.time()
     print(f"Took {(end_time-start_time)/3600} hours!")
     del llm
