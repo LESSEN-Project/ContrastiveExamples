@@ -27,7 +27,6 @@ elif args.dataset.startswith("amazon"):
 else:
     raise Exception("Dataset not known!")
 
-
 MAX_NEW_TOKENS = 64 if dataset.name == "lamp" else 128
 pred_path = "preds"
 os.makedirs(pred_path, exist_ok=True)
@@ -56,7 +55,7 @@ else:
 
 if args.counter_examples:
     _, query_retr_res = retriever.get_retrieval_results(queries, queries)
-    final_feature_list.append("CE")
+    final_feature_list.append(f"CE({args.counter_examples})")
 
 print(f"Running experiments for {args.dataset} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
 sys.stdout.flush()
@@ -91,11 +90,11 @@ for model_name in LLMs:
         
         if args.counter_examples:
             _, retr_gt_name, retr_prompt_name = dataset.get_var_names()
-            ce_idxs = query_retr_res[cont_idx][-3:]
+            ce_idxs = query_retr_res[cont_idx][-args.counter_examples:]
             ce_examples = []
             for ce_i, ce in enumerate(ce_idxs):
                 ce_example = []
-                max_range = len(retr_texts[ce]) if k > len(retr_texts[ce]) else k
+                max_range = len(retr_texts[ce]) if k//4 > len(retr_texts[ce]) else k//4
                 for j in range(max_range):
                     ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
                 ce_examples.append(ce_example)
@@ -105,7 +104,6 @@ for model_name in LLMs:
         start_bot_time = time.time() 
         prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
         prompt = [{"role": "user", "content": prompt}]
-        print(f"Number of Tokens: {llm.count_tokens(prompt)}")
            
         res = llm.prompt_chatbot(prompt)
         # print(f"Pred: {res}")

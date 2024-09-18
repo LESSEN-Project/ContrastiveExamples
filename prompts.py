@@ -27,7 +27,7 @@ def amazon_prompts():
 
 def _ss_amazon_prompt() -> str:
     return strip_all("""You are an Amazon customer who writes reviews for the products you buy. You will be provided a set of features to help you understand your writing style.
-                     First feature you will receive is similar product-reviews pairs from your past reviews:
+                     First feature you will receive is similar product-review pairs from your past reviews to remind you of your style:
                      <similarpairs>
                      {examples}
                      </similarpairs>
