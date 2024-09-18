@@ -24,7 +24,7 @@ def get_args():
     parser.add_argument("-k", "--k", default=None, type=int)
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
-    parser.add_argument("-ce", "--counter_examples", default=False, action=argparse.BooleanOptionalAction)
+    parser.add_argument("-ce", "--counter_examples", default=None, type=int)
 
     return parser.parse_args()
 
@@ -120,3 +120,20 @@ def parse_json(output):
             print(output)
             print(e)
     return output
+
+def oai_get_or_create_file(client, filename):
+    files = client.files.list()
+
+    existing_file = next((file for file in files if file.filename == filename), None)
+
+    if existing_file:
+        print(f"File '{filename}' already exists. File ID: {existing_file.id}")
+        return existing_file.id
+    else:
+        with open(filename, "rb") as file_data:
+            new_file = client.files.create(
+                file=file_data,
+                purpose="batch"
+            )
+        print(f"File '{filename}' created. File ID: {new_file.id}")
+        return new_file.id
