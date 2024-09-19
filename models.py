@@ -6,14 +6,11 @@ import time
 import warnings
 warnings.filterwarnings("ignore")
 
-from huggingface_hub import hf_hub_download, login
+from huggingface_hub import login
 import tiktoken
-import numpy as np
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, logging
 logging.set_verbosity_error()
 from openai import OpenAI
-from llama_cpp import Llama
-from groq import Groq
 from anthropic import Anthropic
 import google.generativeai as genai
 
@@ -91,12 +88,8 @@ class LLM:
                     message = [prompt[0]] + chat_history + [prompt[1]]
                 else:
                     message = chat_history + prompt
-            if self.model_type == "GGUF":
-                response = self.model.create_chat_completion(message, **gen_params)
-                response = response["choices"][-1]["message"]["content"]
-            else:
-                pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, **gen_params)
-                response = pipe(message)[0]["generated_text"][-1]["content"]
+            pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, **gen_params)
+            response = pipe(message)[0]["generated_text"][-1]["content"]
         if stream:
             self.stream_output(response)
         return response
@@ -162,15 +155,13 @@ class LLM:
             return "GROQ"
         elif self.model_name.endswith("TGTR"):
             return "TGTR"
-        elif self.model_name.endswith("GGUF"):
-            return "GGUF"
         elif self.family in ["CLAUDE", "GPT", "GEMINI"]:
             return "proprietary"
         else:
             return "default"
         
     def init_tokenizer(self):
-        if self.model_type in ["AWQ", "GPTQ", "PPLX", "GROQ", "GGUF", "TGTR"]:
+        if self.model_type in ["AWQ", "GPTQ", "PPLX", "GROQ", "TGTR"]:
             return AutoTokenizer.from_pretrained(self.cfg.get("tokenizer"), use_fast=True)
         elif self.model_type in ["proprietary"]:
             return None
@@ -180,7 +171,7 @@ class LLM:
     def get_gen_params(self, gen_params):
         if self.family == "GEMINI":
             self.name_token_var = "max_output_tokens"
-        elif self.model_type in ["PPLX", "GROQ", "GGUF", "TGTR", "proprietary"]:
+        elif self.model_type in ["PPLX", "GROQ", "TGTR", "proprietary"]:
             self.name_token_var = "max_tokens"
         else:
             self.name_token_var = "max_new_tokens"
@@ -223,12 +214,6 @@ class LLM:
                 return {
                     "api_key": os.getenv("GOOGLE_API_KEY")
                 }
-            elif self.model_type == "GGUF":
-                return {
-                    "n_gpu_layers": -1,
-                    "verbose": False,
-                    "n_ctx": self.context_length
-                }
             else:
                 return {}
         else:
@@ -242,15 +227,6 @@ class LLM:
         elif self.family == "GEMINI":
             genai.configure(**self.model_params)
             return genai.GenerativeModel(self.repo_id)       
-        elif self.model_type == "GGUF":
-            if os.getenv("HF_HOME") is None:
-                hf_cache_path = os.path.join(os.path.expanduser('~'), ".cache", "huggingface", "hub")
-            else:
-                hf_cache_path = os.getenv("HF_HOME")
-            model_path = os.path.join(hf_cache_path, self.file_name)
-            if not os.path.exists(model_path):
-                hf_hub_download(repo_id=self.repo_id, filename=self.file_name, local_dir=hf_cache_path)
-            return Llama(model_path=model_path, **self.model_params)
         else: 
             return AutoModelForCausalLM.from_pretrained(
                     self.repo_id,
