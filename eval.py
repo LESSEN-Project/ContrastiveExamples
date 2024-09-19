@@ -27,7 +27,7 @@ os.makedirs(evals_dir, exist_ok=True)
 out_gts = dataset.get_gt()
 all_res = []
 models = []
-cols = ["model", "features", "retriever", "k"]
+cols = ["model", "features", "retriever", "k", "two_step"]
 
 rouge = load("rouge")
 bleu = load("bleu")
@@ -37,12 +37,17 @@ for file in os.listdir(preds_dir):
     if file.startswith(args.dataset) and file.endswith(".json"):
         params = file[len(args.dataset)+1:-5].split("_")
         # summary = re.findall(r'\((.*?)\)', params[4])[0]
-        k = re.findall(r'\((.*?)\)', params[3])[0]
-        retriever = params[2]
-        features = params[1]
+        k = re.findall(r'\((.*?)\)', params[-1])[0]
+        retriever = params[-2]
+        features = params[-3]
         if features != "None":
             features = ":".join(eval(features))
         model = params[0]
+
+        if params[1] == "True":
+            two_step = True
+        else:
+            two_step = False
 
         with open(os.path.join(preds_dir, file), "r") as f:
             preds = json.load(f)["golds"]
@@ -57,6 +62,7 @@ for file in os.listdir(preds_dir):
             "features": features,
             "retriever": retriever,
             "k": k,
+            "two_step": two_step
             # "summary": summary
         }
         rouge_results = rouge.compute(predictions=preds, references=out_gts)

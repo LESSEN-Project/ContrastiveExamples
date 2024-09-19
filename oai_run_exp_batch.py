@@ -89,18 +89,16 @@ for i in range(len(queries)):
                         "body": {"model": llm.repo_id, 
                                  "messages": [{"role": "user", "content":prompt}], "max_tokens": MAX_NEW_TOKENS}})
     
-file_name = os.path.join("preds", f"{exp_name}.jsonl")
-with open(file_name, "w") as file:
+with open(os.path.join("preds", f"{exp_name}.jsonl"), "w") as file:
     for item in all_prompts:
         json_line = json.dumps(item)
         file.write(json_line + '\n')
 
 client = OpenAI()
-batch_input_file_id = oai_get_or_create_file(client, file_name)
+batch_input_file_id = oai_get_or_create_file(client, f"{exp_name}.jsonl")
 
 client.batches.create(
     input_file_id=batch_input_file_id,
     endpoint="/v1/chat/completions",
     completion_window="24h",
 )
-os.rename(file_name, os.path.join("preds", f"{exp_name}.jsonl"))
