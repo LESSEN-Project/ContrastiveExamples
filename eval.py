@@ -34,7 +34,7 @@ bleu = load("bleu")
 cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum", "bleu"])
 
 for file in os.listdir(preds_dir):
-    if file.startswith(args.dataset):
+    if file.startswith(args.dataset) and file.endswith(".json"):
         params = file[len(args.dataset)+1:-5].split("_")
         # summary = re.findall(r'\((.*?)\)', params[4])[0]
         k = re.findall(r'\((.*?)\)', params[3])[0]

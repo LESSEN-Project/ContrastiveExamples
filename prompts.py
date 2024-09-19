@@ -31,7 +31,7 @@ def _ss_amazon_prompt() -> str:
                      <similarpairs>
                      {examples}
                      </similarpairs>
-                     Now you will receive features shedding light into how you use words and formulates sentence, compared to other writers:
+                     Now you will receive features shedding light into how you use words and formulate sentences:
                      <features>
                      {features}
                      </features>
