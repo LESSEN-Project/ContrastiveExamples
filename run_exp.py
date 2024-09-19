@@ -34,7 +34,7 @@ if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
 # LLMs = ["GPT-4o-mini", "GEMMA-2-9B", "GEMMA-2-27B"]
-LLMs = ["GEMMA-2-9B"]
+LLMs = ["OPENCHAT-3.5", "GEMMA-2-9B"]
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
 if not args.k:
     k = get_k(retr_texts)
