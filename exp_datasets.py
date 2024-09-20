@@ -15,7 +15,7 @@ class Dataset(ABC):
         pass
 
     @abstractmethod
-    def get_gt(self):
+    def get_gts(self):
         pass
 
     @abstractmethod
@@ -34,6 +34,7 @@ class LampDataset(Dataset):
         self.split = split
         self.tag = f"lamp_{self.num}_{self.split}"
         self.dataset_dir = dataset_dir
+        self.dataset = None
 
     def get_dataset(self):
         os.makedirs(self.dataset_dir, exist_ok=True)
@@ -52,7 +53,7 @@ class LampDataset(Dataset):
                 json.dump(data, f)
         return data
     
-    def get_gt(self):
+    def get_gts(self):
         lamp_dataset_path = "datasets"
         os.makedirs(lamp_dataset_path, exist_ok=True)
         if self.num == 2:
@@ -102,12 +103,13 @@ class LampDataset(Dataset):
         return retr_text_name, retr_gt_name, retr_prompt_name
 
     def get_retr_data(self):
-        data = self.get_dataset()
+        if not self.dataset:
+            self.dataset = self.get_dataset()
         queries = []
         retr_text = []
         retr_gts = []
         prof_text_name, prof_gt_name, _ = self.get_var_names()
-        for sample in data:
+        for sample in self.dataset:
             if self.num in [3, 4, 5, 7]:
                 text_idx = sample["input"].find(":") + 1
                 queries.append(sample["input"][text_idx:].strip())
@@ -133,6 +135,7 @@ class AmazonDataset(Dataset):
         self.name = "amazon"
         self.category = category
         self.year = year
+        self.dataset = None
         self.tag = f"amazon_{self.category}_{self.year}"
         self.dataset_dir = dataset_dir
 
@@ -210,11 +213,13 @@ class AmazonDataset(Dataset):
         print("Finished processing user data!")
         with open(data_path, "w") as f:
             json.dump(all_user_data, f)
+        self.dataset = all_user_data
         return all_user_data
 
-    def get_gt(self):
-        data = self.get_dataset()
-        return [d["Product"]["Review"] for d in data]
+    def get_gts(self):
+        if not self.dataset:
+            self.dataset = self.get_dataset()
+        return [d["Product"]["Review"] for d in self.dataset]
     
     def get_var_names(self):
         retr_gt_name = "Review", "Rating"
@@ -223,15 +228,17 @@ class AmazonDataset(Dataset):
         return retr_text_name, retr_gt_name, retr_prompt_name
 
     def get_ratings(self, idx):
-        data = self.get_dataset()
-        return data[idx]["Product"]["Score"], [item["Product"]["Score"] for item in data[idx]["History"]]
+        if not self.dataset:
+            self.dataset = self.get_dataset()
+        return self.dataset[idx]["Product"]["Score"], [item["Score"] for item in self.dataset[idx]["History"]]
 
     def get_retr_data(self):
         queries = []
         retr_text = []
         retr_gts = []
-        data = self.get_dataset()
-        for sample in data:
+        if not self.dataset:
+            self.dataset = self.get_dataset()
+        for sample in self.dataset:
             queries.append(sample["Product"]["Name"])
             retr_text.append([item["Name"] for item in sample["History"]])
             retr_gts.append([item["Review"] for item in sample["History"]])

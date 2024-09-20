@@ -112,6 +112,7 @@ for model_name in LLMs:
         start_bot_time = time.time() 
 
         prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
+        print(prompt)
         prompt = [{"role": "user", "content": prompt}]
         res = llm.prompt_chatbot(prompt)
 

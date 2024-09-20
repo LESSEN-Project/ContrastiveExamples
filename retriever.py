@@ -81,11 +81,12 @@ class Retriever:
                 doc_ratings = [doc_ratings[doc_id] for doc_id in sorted_idxs[:k]]
                 
             examples = []
-            for i, text, gt in enumerate(zip(texts, gts)):
-                if text != gt:                        
-                    example = f"{retr_prompt_name.capitalize()}:\n{text}\n{retr_gt_name.capitalize()}:\n{gt}\n"
-                    if self.dataset.name == "amazon":
-                        example = f"{example.strip()}\nRating:\n{doc_ratings[i]}"
+            for i, (text, gt) in enumerate(zip(texts, gts)):
+                if text != gt:      
+                    if isinstance(retr_gt_name, tuple):
+                        example = f"{retr_prompt_name.capitalize()}:\n{text}\n{retr_gt_name[0].capitalize()}:\n{gt}\n{retr_gt_name[1].capitalize()}:\n{doc_ratings[i]}"
+                    else:
+                        example = f"{retr_prompt_name.capitalize()}:\n{text}\n{retr_gt_name.capitalize()}:\n{gt}\n"
                 else:
                     example = f"{retr_prompt_name.capitalize()}:\n{text}"
                 examples.append(example)
