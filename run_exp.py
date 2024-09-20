@@ -85,7 +85,10 @@ for model_name in LLMs:
 
     for _ in range(len(queries) - len(all_res)):
         
-        query = queries[cont_idx]        
+        query = queries[cont_idx]       
+        if dataset_name == "amazon":
+            query_rating, _ = dataset.get_ratings(cont_idx) 
+            query = f"{query}\nRating:\n{query_rating}"
         context = all_context[cont_idx]            
         if args.features:
             features = prepared_features[cont_idx]
@@ -116,7 +119,6 @@ for model_name in LLMs:
             improvement_prompt = prepare_improvement_prompt(dataset, query, llm, context, features, res)
             improvement_prompt = [{"role": "user", "content": improvement_prompt}]
             res = llm.prompt_chatbot(improvement_prompt)
-            
 
         # print(f"Pred: {res}")
         id = ids[cont_idx] if dataset_name == "lamp" else cont_idx

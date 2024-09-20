@@ -74,13 +74,18 @@ class Retriever:
                     print(i)     
                     self.save_file(all_idxs)
 
-            texts = [retr_text[doc_id] for doc_id in sorted_idxs[:k]]
+            texts = [retr_text[doc_id] for doc_id in sorted_idxs[:k]]                
             gts = [retr_gt[doc_id] for doc_id in sorted_idxs[:k]]
-
+            if isinstance(retr_gt_name, tuple):
+                _, doc_ratings = self.dataset.get_ratings(i)
+                doc_ratings = [doc_ratings[doc_id] for doc_id in sorted_idxs[:k]]
+                
             examples = []
-            for text, gt in zip(texts, gts):
-                if text != gt:
+            for i, text, gt in enumerate(zip(texts, gts)):
+                if text != gt:                        
                     example = f"{retr_prompt_name.capitalize()}:\n{text}\n{retr_gt_name.capitalize()}:\n{gt}\n"
+                    if self.dataset.name == "amazon":
+                        example = f"{example.strip()}\nRating:\n{doc_ratings[i]}"
                 else:
                     example = f"{retr_prompt_name.capitalize()}:\n{text}"
                 examples.append(example)

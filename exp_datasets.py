@@ -143,7 +143,8 @@ class AmazonDataset(Dataset):
         user_var = "user_id" if self.year == 2023 else "reviewerID"
 
         user_counts = df[user_var].value_counts()
-        users_with_enough_samples = user_counts[user_counts >= 5].index
+        min_samples = 50 if self.category == "Movies_and_TV" else 5
+        users_with_enough_samples = user_counts[user_counts >= min_samples].index
         df = df[df[user_var].isin(users_with_enough_samples)]
 
         all_users = df[user_var].unique()
@@ -216,10 +217,14 @@ class AmazonDataset(Dataset):
         return [d["Product"]["Review"] for d in data]
     
     def get_var_names(self):
-        retr_gt_name = "Review"
+        retr_gt_name = "Review", "Rating"
         retr_text_name = "Product"
         retr_prompt_name = "Product"
         return retr_text_name, retr_gt_name, retr_prompt_name
+
+    def get_ratings(self, idx):
+        data = self.get_dataset()
+        return data[idx]["Product"]["Score"], [item["Product"]["Score"] for item in data[idx]["History"]]
 
     def get_retr_data(self):
         queries = []
