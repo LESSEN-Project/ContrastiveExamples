@@ -77,11 +77,14 @@ for i in range(len(queries)):
             ce_example = []
             max_range = len(retr_texts[ce]) if k//4 > len(retr_texts[ce]) else k//4
             for j in range(max_range):
-                ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
+                if retr_gt_name:
+                    ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
+                else:
+                    ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}")
             ce_examples.append(ce_example)
     else:
         ce_examples = None
-
+        
     id = ids[i] if dataset_name == "lamp" else i
     start_bot_time = time.time() 
     prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
