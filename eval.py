@@ -24,7 +24,7 @@ evals_dir = "evals"
 os.makedirs(preds_dir, exist_ok=True)
 os.makedirs(evals_dir, exist_ok=True)
 
-out_gts = dataset.get_gt()
+out_gts = dataset.get_gts()
 all_res = []
 models = []
 cols = ["model", "features", "retriever", "k", "two_step"]
