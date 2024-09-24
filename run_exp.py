@@ -33,8 +33,7 @@ os.makedirs(pred_path, exist_ok=True)
 if dataset_name == "lamp":
     ids = dataset.get_ids()    
 
-# LLMs = ["GPT-4o-mini", "GEMMA-2-9B", "GEMMA-2-27B"]
-LLMs = ["OPENCHAT-3.5", "GEMMA-2-9B", "GEMMA-2-27B"]
+LLMs = ["GEMMA-2-9B", "GEMMA-2-27B"]
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
 if not args.k:
     k = get_k(retr_texts)
@@ -97,12 +96,17 @@ for model_name in LLMs:
             _, retr_gt_name, retr_prompt_name = dataset.get_var_names()
             ce_idxs = query_retr_res[cont_idx][-args.counter_examples:]
             ce_examples = []
-            for ce_i, ce in enumerate(ce_idxs):
+            for ce in ce_idxs:
                 ce_example = []
                 max_range = len(retr_texts[ce]) if k//4 > len(retr_texts[ce]) else k//4
+                if isinstance(retr_gt_name, tuple):
+                    _, doc_ratings = dataset.get_ratings(ce)
                 for j in range(max_range):
                     if retr_gt_name:
-                        ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
+                        if isinstance(retr_gt_name, tuple):
+                            ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name[0].capitalize()}:\n{retr_gts[ce][j]}\n{retr_gt_name[1].capitalize()}:\n{doc_ratings[j]}")
+                        else:
+                            ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
                     else:
                         ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}")
                 ce_examples.append(ce_example)
@@ -110,9 +114,7 @@ for model_name in LLMs:
             ce_examples = None
 
         start_bot_time = time.time() 
-
         prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
-        print(prompt)
         prompt = [{"role": "user", "content": prompt}]
         res = llm.prompt_chatbot(prompt)
 
