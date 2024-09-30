@@ -81,7 +81,7 @@ class FeatureProcessor():
             words = word_tokenize(text.lower())
             pos_tags = pos_tag(words)
             pronouns = [word for word, pos in pos_tags if pos.startswith('PRP')]
-            return res.append(round((len(pronouns) / len(words)) * 100, 2))
+            res.append(round((len(pronouns) / len(words)) * 100, 2))
 
         return res
 
