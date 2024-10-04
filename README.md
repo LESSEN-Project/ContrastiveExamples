@@ -1,19 +1,53 @@
-## Usage
+<h2>Usage</h2>
 
-To run an experiment, you can use the following command with arguments:
+<p>To run an experiment, use the following command with appropriate arguments:</p>
 
-```bash
-python run_exp.py -d lamp_5_dev -k 5 -f WF DPF -r contriever -ce 3
-```
+<pre><code>python run_exp.py -d lamp_5_dev -k 5 -f WF DPF -r contriever -ce 3
+</code></pre>
 
-- `--d`: Dataset name. Supported datasets are LaMP (4, 5, 7) and Amazon reviews. LaMP datasets should be in the **lamp_{dataset_num}_{data_split}** format, and they utilize the user-based splits by default. Ex. lamp_4_test, lamp_5_dev. Amazon datasets should be in the **amazon_{category}_{year}** format. Ex: amazon_All_Beauty_2018. Default: lamp_5_dev
-- `--k`: Number of retrieved documents for RAG. If None is passed, k is inferred by the length of the user profiles. Default: None
-- `--f`: The feature set. Features should be separated by space. Default None
-- `--r`: Retriever, can be "contriever", "dpr", or any other model available in SentenceTransformers. Default: contriever
-- `--ce`: The number of contrastive users, if None it won't use the contrastive examples method. Default: None
+<h3>Parameters:</h3>
 
-For evaluation:
+<ul>
+  <li><code>-d</code>, <code>--dataset</code>: <strong>Dataset name</strong>. 
+    <ul>
+      <li>Supported datasets include LaMP (4, 5, 7) and Amazon reviews.</li>
+      <li>LaMP datasets follow the format <code>lamp_{dataset_num}_{data_split}</code> (e.g., <code>lamp_4_test</code>, <code>lamp_5_dev</code>) and use user-based splits by default.</li>
+      <li>Amazon datasets follow the format <code>amazon_{category}_{year}</code> (e.g., <code>amazon_All_Beauty_2018</code>).</li>
+      <li><strong>Default</strong>: <code>lamp_5_dev</code></li>
+    </ul>
+  </li>
 
-```bash
-python eval.py -d dataset_name
-```
+  <li><code>-k</code>, <code>--top_k</code>: <strong>Number of retrieved documents for RAG</strong>. 
+    <ul>
+      <li>If <code>None</code> is passed, <code>k</code> is inferred by the length of the user profiles.</li>
+      <li><strong>Default</strong>: <code>None</code></li>
+    </ul>
+  </li>
+
+  <li><code>-f</code>, <code>--features</code>: <strong>Feature set</strong> (space-separated features). 
+    <ul>
+      <li><strong>Default</strong>: <code>None</code></li>
+    </ul>
+  </li>
+
+  <li><code>-r</code>, <code>--retriever</code>: <strong>Retriever model</strong>.
+    <ul>
+      <li>Options include <code>&quot;contriever&quot;</code>, <code>&quot;dpr&quot;</code>, or any model available in <a href="https://www.sbert.net/">SentenceTransformers</a>.</li>
+      <li><strong>Default</strong>: <code>contriever</code></li>
+    </ul>
+  </li>
+
+  <li><code>-ce</code>, <code>--contrastive_examples</code>: <strong>Number of contrastive users</strong>. 
+    <ul>
+      <li>If <code>None</code>, contrastive examples method won’t be applied.</li>
+      <li><strong>Default</strong>: <code>None</code></li>
+    </ul>
+  </li>
+</ul>
+
+<h3>Evaluation:</h3>
+
+<p>Run the evaluation using the following command:</p>
+
+<pre><code>python eval.py -d dataset_name
+</code></pre>
