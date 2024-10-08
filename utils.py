@@ -25,7 +25,6 @@ def get_args():
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
     parser.add_argument("-ce", "--counter_examples", default=None, type=int)
-    parser.add_argument("-ts", "--two_step", action="store_true")
 
     return parser.parse_args()
 

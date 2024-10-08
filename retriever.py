@@ -9,6 +9,7 @@ from sentence_transformers import SentenceTransformer
 
 class Retriever:
     def __init__(self, dataset, model: str = "contriever", device: str = "cuda:0"):
+
         self.model = model
         self.device = device
         self.dataset = dataset
@@ -57,6 +58,35 @@ class Retriever:
             similarities = [similarities]
         return similarities, sorted_idxs
     
+    def contrastive_retrieval(self, queries, retr_texts, retr_gts, ce_k, k):
+
+        _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
+        _, ce_retr_res = self.get_retrieval_results(queries, queries)
+
+        all_ce_examples = []
+        for ce_retr in ce_retr_res:
+
+            ce_idxs = ce_retr[-ce_k:]
+
+            ce_examples = []
+            for ce in ce_idxs:
+                ce_example = []
+                max_range = len(retr_texts[ce]) if k//4 > len(retr_texts[ce]) else k//4
+                if isinstance(retr_gt_name, tuple):
+                    _, doc_ratings = self.dataset.get_ratings(ce)
+                for j in range(max_range):
+                    if retr_gt_name:
+                        if isinstance(retr_gt_name, tuple):
+                            ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name[0].capitalize()}:\n{retr_gts[ce][j]}\n{retr_gt_name[1].capitalize()}:\n{doc_ratings[j]}")
+                        else:
+                            ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
+                    else:
+                        ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}")
+                ce_examples.append(ce_example)
+            all_ce_examples.append(ce_examples)
+            
+        return all_ce_examples
+
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> List[List[str]]:
         all_idxs = self.check_file()
         all_examples = []

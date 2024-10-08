@@ -8,7 +8,7 @@ import copy
 
 from models import LLM
 from utils import get_args, get_k
-from prompts import prepare_res_prompt, prepare_improvement_prompt
+from prompts import prepare_res_prompt
 from exp_datasets import LampDataset, AmazonDataset
 from feature_processor import FeatureProcessor
 from retriever import Retriever
@@ -35,10 +35,10 @@ if dataset_name == "lamp":
 
 LLMs = ["GEMMA-2-9B", "GEMMA-2-27B"]
 queries, retr_texts, retr_gts = dataset.get_retr_data() 
-if not args.k:
+if not args.top_k:
     k = get_k(retr_texts)
 else:
-    k = args.k
+    k = args.top_k
 
 retriever = Retriever(dataset, args.retriever)
 final_feature_list = []
@@ -53,16 +53,14 @@ else:
     features = None
 
 if args.counter_examples:
-    _, query_retr_res = retriever.get_retrieval_results(queries, queries)
+    all_ce_examples = retriever.contrastive_retrieval(queries, retr_texts, retr_gts, args.counter_examples, k)
     final_feature_list.append(f"CE({args.counter_examples})")
 
-print(f"Running experiments for {args.dataset} with Features: {final_feature_list}, Retriever: {args.retriever}, Two-step Gen: {args.two_step}, and K: {k}")
+print(f"Running experiments for {args.dataset} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
 sys.stdout.flush()
+
 for model_name in LLMs:
-    if args.two_step:
-        exp_name = f"{args.dataset}_{model_name}_{args.two_step}_{final_feature_list}_{args.retriever}_K({k}))"
-    else:
-        exp_name = f"{args.dataset}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
+    exp_name = f"{args.dataset}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -93,23 +91,7 @@ for model_name in LLMs:
             features = prepared_features[cont_idx]
         
         if args.counter_examples:
-            _, retr_gt_name, retr_prompt_name = dataset.get_var_names()
-            ce_idxs = query_retr_res[cont_idx][-args.counter_examples:]
-            ce_examples = []
-            for ce in ce_idxs:
-                ce_example = []
-                max_range = len(retr_texts[ce]) if k//4 > len(retr_texts[ce]) else k//4
-                if isinstance(retr_gt_name, tuple):
-                    _, doc_ratings = dataset.get_ratings(ce)
-                for j in range(max_range):
-                    if retr_gt_name:
-                        if isinstance(retr_gt_name, tuple):
-                            ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name[0].capitalize()}:\n{retr_gts[ce][j]}\n{retr_gt_name[1].capitalize()}:\n{doc_ratings[j]}")
-                        else:
-                            ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}\n{retr_gt_name.capitalize()}:\n{retr_gts[ce][j]}")
-                    else:
-                        ce_example.append(f"{retr_prompt_name.capitalize()}:\n{retr_texts[ce][j]}")
-                ce_examples.append(ce_example)
+            ce_examples = all_ce_examples[cont_idx]
         else:
             ce_examples = None
 
@@ -117,16 +99,9 @@ for model_name in LLMs:
         prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
         prompt = [{"role": "user", "content": prompt}]
         res = llm.prompt_chatbot(prompt)
-
-        if args.two_step:
-            improvement_prompt = prepare_improvement_prompt(dataset, query, llm, context, features, res)
-            improvement_prompt = [{"role": "user", "content": improvement_prompt}]
-            res = llm.prompt_chatbot(improvement_prompt)
-
-        # print(f"Pred: {res}")
         id = ids[cont_idx] if dataset_name == "lamp" else cont_idx
-        # print(f"GT: {gts[cont_idx]}")
         end_bot_time = time.time()
+        
         all_res.append({
                 "id": id,
                 "output": res.strip(),
