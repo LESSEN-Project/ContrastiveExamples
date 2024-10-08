@@ -1,6 +1,21 @@
+<h2>Requirements</h2>
+
+<ul>
+  <li> Python >= 3.11.3</li>
+  <li> CUDA >= 12</li>
+</ul>
+<p>This project requires Python 3.8 or higher. You can check your Python version using the following command:</p>
+
+<p> First, install the necessary packages by running the requirements.txt file:
+
+```bash
+pip install -r requirements.txt
+```
+
+
 <h2>Usage</h2>
 
-<p>To run an experiment, use the following command:</p>
+<p>You can run experiment with the following command:</p>
 
 <pre><code>python run_exp.py -d lamp_5_dev -k 5 -f WF DPF -r contriever -ce 3
 </code></pre>
