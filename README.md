@@ -58,12 +58,6 @@ pip install -r requirements.txt
       <li><strong>Default</strong>: <code>None</code></li>
     </ul>
   </li>
-
-  <li><code>-ts</code>, <code>--two_step</code>: <strong>Boolean for deciding whether to use two-step generation</strong>. 
-    <ul>
-      <li><strong>Default</strong>: <code>False</code></li>
-    </ul>
-  </li>
 </ul>
 
 <h3>Evaluation:</h3>
