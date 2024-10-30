@@ -4,7 +4,6 @@
   <li> Python >= 3.11.3</li>
   <li> CUDA >= 12</li>
 </ul>
-<p>This project requires Python 3.8 or higher. You can check your Python version using the following command:</p>
 
 <p> First, install the necessary packages by running the requirements.txt file:
 
@@ -12,12 +11,11 @@
 pip install -r requirements.txt
 ```
 
-
 <h2>Usage</h2>
 
 <p>You can run experiment with the following command:</p>
 
-<pre><code>python run_exp.py -d lamp_5_dev -k 5 -f WF DPF -r contriever -ce 3
+<pre><code>python run_exp.py -d lamp_5_dev_user -k 5 -f WF DPF -r contriever -ce 3
 </code></pre>
 
 <h3>Parameters:</h3>
@@ -26,7 +24,7 @@ pip install -r requirements.txt
   <li><code>-d</code>, <code>--dataset</code>: <strong>Dataset name</strong>. 
     <ul>
       <li>Supported datasets include LaMP (4, 5, 7) and Amazon reviews.</li>
-      <li>LaMP datasets follow the format <code>lamp_{dataset_num}_{data_split}</code> (e.g., <code>lamp_4_test</code>, <code>lamp_5_dev</code>) and use user-based splits by default.</li>
+      <li>LaMP datasets follow the format <code>lamp_{dataset_num}_{data_split}_{user/time_split}</code> (e.g., <code>lamp_4_test_user</code>, <code>lamp_5_dev_time</code>). Refer to the <a href="https://lamp-benchmark.github.io/download" target="_blank"> LaMP </a> documentation for more information about the splits. </li>
       <li>Amazon datasets follow the format <code>amazon_{category}_{year}</code> (e.g., <code>amazon_All_Beauty_2018</code>).</li>
       <li><strong>Default</strong>: <code>lamp_5_dev</code></li>
     </ul>
