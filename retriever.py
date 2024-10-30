@@ -58,7 +58,7 @@ class Retriever:
             similarities = [similarities]
         return similarities, sorted_idxs
     
-    def contrastive_retrieval(self, queries, retr_texts, retr_gts, ce_k, k):
+    def contrastive_retrieval(self, queries, retr_texts, retr_gts, num_ce, ce_k):
 
         _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
         _, ce_retr_res = self.get_retrieval_results(queries, queries)
@@ -66,12 +66,11 @@ class Retriever:
         all_ce_examples = []
         for ce_retr in ce_retr_res:
 
-            ce_idxs = ce_retr[-ce_k:]
-
+            ce_idxs = ce_retr[-num_ce:]
             ce_examples = []
             for ce in ce_idxs:
                 ce_example = []
-                max_range = len(retr_texts[ce]) if k//4 > len(retr_texts[ce]) else k//4
+                max_range = len(retr_texts[ce]) if ce_k > len(retr_texts[ce]) else ce_k
                 if isinstance(retr_gt_name, tuple):
                     _, doc_ratings = self.dataset.get_ratings(ce)
                 for j in range(max_range):

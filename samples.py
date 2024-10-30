@@ -3,20 +3,11 @@ import os
 import re
 import numpy as np
 
-from utils import get_args, parse_json
+from utils import get_args, parse_dataset
 from exp_datasets import LampDataset, AmazonDataset
 
 args = get_args()
-if args.dataset.startswith("lamp"):
-    dataset_name = "lamp"
-    num = int(args.dataset.split("_")[1])
-    split = args.dataset.split("_")[-1]
-    dataset = LampDataset(num, split)
-elif args.dataset.startswith("amazon"):
-    dataset_name = "amazon"
-    year = int(args.dataset.split("_")[-1])
-    category = "_".join(args.dataset.split("_")[1:-1])
-    dataset = AmazonDataset(category, year)
+dataset = parse_dataset(args.dataset)
 
 rand_k = 20
 preds_dir = "preds"
@@ -41,7 +32,3 @@ for i, sample in enumerate(rand_samples):
         print()
         print(model)
         print(model_samples[model][i])
-
-
-
-        

@@ -28,21 +28,27 @@ class Dataset(ABC):
 
 
 class LampDataset(Dataset):
-    def __init__(self, num, split="dev", dataset_dir="datasets"):
+    def __init__(self, num, data_split="dev", split="user", dataset_dir="datasets"):
         self.name = "lamp"
         self.num = num
         self.split = split
-        self.tag = f"lamp_{self.num}_{self.split}"
+        self.data_split = data_split
+        self.tag = f"lamp_{self.num}_{self.data_split}_{self.split}"
         self.dataset_dir = dataset_dir
         self.dataset = None
 
     def get_dataset(self):
         os.makedirs(self.dataset_dir, exist_ok=True)
-        data_path = os.path.join(self.dataset_dir, f"lamp_{self.num}_{self.split}_data.json")
+        data_path = os.path.join(self.dataset_dir, f"{self.tag}_data.json")
+
+        base_url = "https://ciir.cs.umass.edu/downloads/LaMP/"
+        if self.split == "time":
+            base_url = f"{base_url}/time"
         if self.num == 2:
-            base_url = f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{self.num}/new/{self.split}/{self.split}"
+            base_url = f"{base_url}/LaMP_{self.num}/new/{self.data_split}/{self.data_split}"
         else:
-            base_url = f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{self.num}/{self.split}/{self.split}"
+            base_url = f"{base_url}/LaMP_{self.num}/{self.data_split}/{self.data_split}"
+
         if os.path.exists(data_path):
             with open(data_path, "r") as f:
                 data = json.load(f)
@@ -54,14 +60,17 @@ class LampDataset(Dataset):
         return data
     
     def get_gts(self):
-        lamp_dataset_path = "datasets"
-        os.makedirs(lamp_dataset_path, exist_ok=True)
+        os.makedirs(self.dataset_dir, exist_ok=True)
+        base_url = "https://ciir.cs.umass.edu/downloads/LaMP/"
+        if self.split == "time":
+            base_url = f"{base_url}/time"
         if self.num == 2:
-            base_url = f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{self.num}/new/{self.split}/{self.split}"
+            base_url = f"{base_url}/LaMP_{self.num}/new/{self.data_split}/{self.data_split}"
         else:
-            base_url = f"https://ciir.cs.umass.edu/downloads/LaMP/LaMP_{self.num}/{self.split}/{self.split}"
+            base_url = f"{base_url}/LaMP_{self.num}/{self.data_split}/{self.data_split}"
+
         if self.split != "test":
-            gts_path = os.path.join(lamp_dataset_path, f"lamp_{self.num}_{self.split}_gts.json")
+            gts_path = os.path.join(self.dataset_dir, f"{self.tag}_gts.json")
             if os.path.exists(gts_path):
                 with open(gts_path, "r") as f:
                     gts = json.load(f)

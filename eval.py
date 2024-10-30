@@ -4,20 +4,10 @@ import os
 import re
 from evaluate import load
 
-from utils import get_args
-from exp_datasets import LampDataset, AmazonDataset
+from utils import get_args, parse_dataset
 
 args = get_args()
-if args.dataset.startswith("lamp"):
-    dataset_name = "lamp"
-    num = int(args.dataset.split("_")[1])
-    split = args.dataset.split("_")[-1]
-    dataset = LampDataset(num, split)
-elif args.dataset.startswith("amazon"):
-    dataset_name = "amazon"
-    year = int(args.dataset.split("_")[-1])
-    category = "_".join(args.dataset.split("_")[1:-1])
-    dataset = AmazonDataset(category, year)
+dataset = parse_dataset(args.dataset)
 
 preds_dir = "preds"
 evals_dir = "evals"
@@ -34,11 +24,11 @@ bleu = load("bleu")
 cols.extend(["rouge1", "rouge2", "rougeL", "rougeLsum", "bleu"])
 
 for file in os.listdir(preds_dir):
-    if file.startswith(args.dataset) and file.endswith(".json"):
-        params = file[len(args.dataset)+1:-5].split("_")
+    if file.startswith(dataset.tag) and file.endswith(".json"):
+        params = file[len(dataset.tag)+1:-5].split("_")
         k = re.findall(r'\((.*?)\)', params[-1])[0]
-        retriever = params[-2]
-        features = params[-3]
+        retriever = params[2]
+        features = params[1]
         if features != "None":
             features = ":".join(eval(features))
         model = params[0]
@@ -56,7 +46,6 @@ for file in os.listdir(preds_dir):
             "features": features,
             "retriever": retriever,
             "k": k,
-            # "summary": summary
         }
         rouge_results = rouge.compute(predictions=preds, references=out_gts)
         bleu_results = bleu.compute(predictions=preds, references=[[gt] for gt in out_gts])

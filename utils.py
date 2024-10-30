@@ -6,6 +6,8 @@ import re
 import numpy as np
 import time
 
+from exp_datasets import LampDataset, AmazonDataset
+
 def log_exp(cur_iter, exp_name):
     os.makedirs("logs", exist_ok=True)
     result_path = os.path.join("logs", f"{exp_name}_{time.time()}.json")
@@ -20,13 +22,27 @@ def log_exp(cur_iter, exp_name):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--dataset", default="lamp_5_dev", type=str)
+    parser.add_argument("-d", "--dataset", default="lamp_5_dev_user", type=str)
     parser.add_argument("-k", "--top_k", default=None, type=int)
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
     parser.add_argument("-ce", "--counter_examples", default=None, type=int)
 
     return parser.parse_args()
+
+def parse_dataset(dataset):
+
+    if dataset.startswith("lamp"):
+        num = int(dataset.split("_")[1])
+        data_split = dataset.split("_")[2]
+        split = dataset.split("_")[-1]
+        return LampDataset(num, data_split, split)
+    elif dataset.startswith("amazon"):
+        year = int(dataset.split("_")[-1])
+        category = "_".join(dataset.split("_")[1:-1])
+        return AmazonDataset(category, year)
+    else:
+        raise Exception("Dataset not known!")
 
 def list_files_in_directory(root_dir):
     file_list = []
