@@ -24,7 +24,7 @@ pip install -r requirements.txt
   <li><code>-d</code>, <code>--dataset</code>: <strong>Dataset name</strong>. 
     <ul>
       <li>Supported datasets include LaMP (4, 5, 7) and Amazon reviews.</li>
-      <li>LaMP datasets follow the format <code>lamp_{dataset_num}_{data_split}_{user/time_split}</code> (e.g., <code>lamp_4_test_user</code>, <code>lamp_5_dev_time</code>). Refer to the <a href="https://lamp-benchmark.github.io/download" target="_blank"> LaMP </a> documentation for more information about the splits. </li>
+      <li>LaMP datasets follow the format <code>lamp_{dataset_num}_{data_split}_{user/time_split}</code> (e.g., <code>lamp_4_test_user</code>, <code>lamp_5_dev_time</code>). Refer to the <a href="https://lamp-benchmark.github.io/download" target="_blank" rel="noopener noreferrer"> LaMP </a> documentation for more information about the splits. </li>
       <li>Amazon datasets follow the format <code>amazon_{category}_{year}</code> (e.g., <code>amazon_All_Beauty_2018</code>).</li>
       <li><strong>Default</strong>: <code>lamp_5_dev</code></li>
     </ul>
