@@ -5,30 +5,18 @@ import json
 from openai import OpenAI
 
 from models import LLM
-from utils import get_args, get_k, oai_get_or_create_file
+from utils import get_args, get_k, oai_get_or_create_file, parse_dataset
 from prompts import prepare_res_prompt
-from exp_datasets import LampDataset, AmazonDataset
 from feature_processor import FeatureProcessor
 from retriever import Retriever
 
 args = get_args()
-if args.dataset.startswith("lamp"):
-    dataset_name = "lamp"
-    num = int(args.dataset.split("_")[1])
-    split = args.dataset.split("_")[-1]
-    dataset = LampDataset(num, split)
-elif args.dataset.startswith("amazon"):
-    dataset_name = "amazon"
-    year = int(args.dataset.split("_")[-1])
-    category = "_".join(args.dataset.split("_")[1:-1])
-    dataset = AmazonDataset(category, year)
-else:
-    raise Exception("Dataset not known!")
+dataset = parse_dataset(args.dataset)
 
 MAX_NEW_TOKENS = 64 if dataset.name == "lamp" else 128
 pred_path = "preds"
 os.makedirs(pred_path, exist_ok=True)
-if dataset_name == "lamp":
+if dataset.name == "lamp":
     ids = dataset.get_ids()    
 
 model_name = "GPT-4o"
@@ -45,7 +33,7 @@ all_context = retriever.get_context(queries, retr_texts, retr_gts, k)
 
 if args.features:
     feature_processor = FeatureProcessor()
-    all_features = feature_processor.get_all_features(args.dataset, args.features, retr_texts, retr_gts)
+    all_features = feature_processor.get_all_features(dataset.tag, args.features, retr_texts, retr_gts)
     prepared_features = feature_processor.prepare_features(all_features, args.features)
     final_feature_list = args.features
 else:
@@ -55,10 +43,10 @@ if args.counter_examples:
     _, query_retr_res = retriever.get_retrieval_results(queries, queries)
     final_feature_list.append(f"CE({args.counter_examples})")
 
-print(f"Running batch experiments for {args.dataset} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
+print(f"Running batch experiments for {dataset.tag} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
 
 llm = LLM(model_name=model_name, gen_params={"max_new_tokens": MAX_NEW_TOKENS})
-exp_name = f"{args.dataset}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
+exp_name = f"{dataset.tag}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
 
 all_prompts = []
 
@@ -85,7 +73,7 @@ for i in range(len(queries)):
     else:
         ce_examples = None
         
-    id = ids[i] if dataset_name == "lamp" else i
+    id = ids[i] if dataset.name == "lamp" else i
     start_bot_time = time.time() 
     prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
     all_prompts.append({"custom_id": str(id), "method": "POST", "url": "/v1/chat/completions", 

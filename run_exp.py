@@ -7,30 +7,19 @@ import subprocess
 import copy
 
 from models import LLM
-from utils import get_args, get_k
+from utils import get_args, get_k, parse_dataset
+
 from prompts import prepare_res_prompt
-from exp_datasets import LampDataset, AmazonDataset
 from feature_processor import FeatureProcessor
 from retriever import Retriever
 
 args = get_args()
-if args.dataset.startswith("lamp"):
-    dataset_name = "lamp"
-    num = int(args.dataset.split("_")[1])
-    split = args.dataset.split("_")[-1]
-    dataset = LampDataset(num, split)
-elif args.dataset.startswith("amazon"):
-    dataset_name = "amazon"
-    year = int(args.dataset.split("_")[-1])
-    category = "_".join(args.dataset.split("_")[1:-1])
-    dataset = AmazonDataset(category, year)
-else:
-    raise Exception("Dataset not known!")
+dataset = parse_dataset(args.dataset)
 
 MAX_NEW_TOKENS = 64 if dataset.name == "lamp" else 128
 pred_path = "preds"
 os.makedirs(pred_path, exist_ok=True)
-if dataset_name == "lamp":
+if dataset.name == "lamp":
     ids = dataset.get_ids()    
 
 LLMs = ["GEMMA-2-9B", "GEMMA-2-27B"]
@@ -46,21 +35,22 @@ all_context = retriever.get_context(queries, retr_texts, retr_gts, k)
 
 if args.features:
     feature_processor = FeatureProcessor()
-    all_features = feature_processor.get_all_features(args.dataset, args.features, retr_texts, retr_gts)
+    all_features = feature_processor.get_all_features(dataset.tag, args.features, retr_texts, retr_gts)
     prepared_features = feature_processor.prepare_features(all_features, args.features)
     final_feature_list = args.features
 else:
     features = None
 
 if args.counter_examples:
-    all_ce_examples = retriever.contrastive_retrieval(queries, retr_texts, retr_gts, args.counter_examples, k)
+    ce_k = 3 if k == 50 else 1
+    all_ce_examples = retriever.contrastive_retrieval(queries, retr_texts, retr_gts, args.counter_examples, ce_k)
     final_feature_list.append(f"CE({args.counter_examples})")
 
-print(f"Running experiments for {args.dataset} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
+print(f"Running experiments for {dataset.tag} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
 sys.stdout.flush()
 
 for model_name in LLMs:
-    exp_name = f"{args.dataset}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
+    exp_name = f"{dataset.tag}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -83,7 +73,7 @@ for model_name in LLMs:
     for _ in range(len(queries) - len(all_res)):
         
         query = queries[cont_idx]       
-        if dataset_name == "amazon":
+        if dataset.name == "amazon":
             query_rating, _ = dataset.get_ratings(cont_idx) 
             query = f"{query}\nRating:\n{query_rating}"
         context = all_context[cont_idx]            
@@ -99,7 +89,7 @@ for model_name in LLMs:
         prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
         prompt = [{"role": "user", "content": prompt}]
         res = llm.prompt_chatbot(prompt)
-        id = ids[cont_idx] if dataset_name == "lamp" else cont_idx
+        id = ids[cont_idx] if dataset.name == "lamp" else cont_idx
         end_bot_time = time.time()
         
         all_res.append({
@@ -112,7 +102,7 @@ for model_name in LLMs:
         if (cont_idx+1)%500==0 or (cont_idx+1)==len(queries):
             print(cont_idx)
             with open(pred_out_path, "w") as f:
-                task = f"LaMP_{num}" if dataset_name == "lamp" else args.dataset          
+                task = f"LaMP_{dataset.num}" if dataset.name == "lamp" else dataset.tag          
                 json.dump({
                     "task": task,
                     "golds": all_res
