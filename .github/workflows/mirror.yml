@@ -3,7 +3,7 @@ name: Mirror Repository to Organization
 on:
   push:
     branches:
-      - main  # or any branch you want to mirror
+      - main  # Adjust this to other branches if needed
 
 jobs:
   mirror:
