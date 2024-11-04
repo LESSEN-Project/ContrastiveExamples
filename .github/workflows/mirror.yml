@@ -3,7 +3,7 @@ name: Mirror Repository to Organization
 on:
   push:
     branches:
-      - main  # or the specific branches you want to mirror
+      - main  # or any branch you want to mirror
 
 jobs:
   mirror:
@@ -12,6 +12,16 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
+
+      - name: Set up SSH for GitHub
+        env:
+          MIRROR_REPO_SSH_KEY: ${{ secrets.MIRROR_REPO_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$MIRROR_REPO_SSH_KEY" > ~/.ssh/mirror_repo_key
+          chmod 600 ~/.ssh/mirror_repo_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config core.sshCommand "ssh -i ~/.ssh/mirror_repo_key"
 
       - name: Push to mirror repository
         run: |
