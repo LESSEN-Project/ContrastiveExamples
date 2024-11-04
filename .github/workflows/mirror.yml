@@ -1,0 +1,20 @@
+name: Mirror Repository to Organization
+
+on:
+  push:
+    branches:
+      - main  # or the specific branches you want to mirror
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Push to mirror repository
+        run: |
+          git remote add mirror git@github.com:LESSEN-Project/ContrastiveExamples.git
+          git push --mirror mirror
+
