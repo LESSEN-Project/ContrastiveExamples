@@ -2,13 +2,14 @@ import os
 import time
 import json
 import sys
-import torch 
 import subprocess
 import copy
+import collections
+
+import torch 
 
 from models import LLM
 from utils import get_args, get_k, parse_dataset
-
 from prompts import prepare_res_prompt
 from feature_processor import FeatureProcessor
 from retriever import Retriever
@@ -46,11 +47,11 @@ if args.counter_examples:
     all_ce_examples = retriever.contrastive_retrieval(queries, retr_texts, retr_gts, args.counter_examples, ce_k)
     final_feature_list.append(f"CE({args.counter_examples})")
 
-print(f"Running experiments for {dataset.tag} with Features: {final_feature_list}, Retriever: {args.retriever}, and K: {k}")
+print(f"Running experiments for {dataset.tag} with Features: {final_feature_list}, Retriever: {args.retriever}, Self Consistency: {args.num_consistency_samples}, and K: {k}")
 sys.stdout.flush()
 
 for model_name in LLMs:
-    exp_name = f"{dataset.tag}_{model_name}_{final_feature_list}_{args.retriever}_K({k}))"
+    exp_name = f"{dataset.tag}_{model_name}_{final_feature_list}_{args.retriever}_SC({args.num_consistency_samples})_K({k}))"
     pred_out_path = f"{pred_path}/{exp_name}.json"
     if os.path.exists(pred_out_path):
         with open(pred_out_path, "rb") as f:
@@ -63,7 +64,7 @@ for model_name in LLMs:
         print("Experiment for this LLM is already concluded!")
         continue
 
-    llm = LLM(model_name=model_name, gen_params={"max_new_tokens": MAX_NEW_TOKENS})
+    llm = LLM(model_name=model_name)
     print(f"Starting from sample no. {len(all_res)}")
     start_time = time.time()
     print(subprocess.run("gpustat")) 
@@ -88,14 +89,21 @@ for model_name in LLMs:
         start_bot_time = time.time() 
         prompt = prepare_res_prompt(dataset, query, llm, examples=context, features=features, counter_examples=ce_examples)
         prompt = [{"role": "user", "content": prompt}]
-        res = llm.prompt_chatbot(prompt)
+
+        res_list = []
+        for i in range(args.num_consistency_samples):
+            res = llm.prompt_chatbot(prompt, gen_params={"max_new_tokens": MAX_NEW_TOKENS, "temperature": 0.8})
+            res_list.append(res.strip())
+        res_counter = collections.Counter(res_list)
+        res = res_counter.most_common(1)[0][0]
+        
         id = ids[cont_idx] if dataset.name == "lamp" else cont_idx
         end_bot_time = time.time()
         
         all_res.append({
                 "id": id,
-                "output": res.strip(),
-                "prompt": prompt[0]["content"],
+                "output": res,
+                "prompt": prompt,
                 "model_inf_time": round(end_bot_time - start_bot_time, 2), 
         })
 

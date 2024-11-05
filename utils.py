@@ -27,6 +27,7 @@ def get_args():
     parser.add_argument('-f', '--features', nargs='+', type=str, default=None)
     parser.add_argument("-r", "--retriever", default="contriever", type=str)
     parser.add_argument("-ce", "--counter_examples", default=None, type=int)
+    parser.add_argument("-sc", "--num_consistency_samples", default=1, type=int)
 
     return parser.parse_args()
 
