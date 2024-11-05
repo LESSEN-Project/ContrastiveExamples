@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout the repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up SSH for GitHub
         env:
@@ -26,5 +28,6 @@ jobs:
       - name: Push to mirror repository
         run: |
           git remote add mirror git@github.com:LESSEN-Project/ContrastiveExamples.git
-          git push --mirror mirror
+          git push --force --all mirror
+          git push --force --tags mirror
 
