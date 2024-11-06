@@ -17,7 +17,7 @@ os.makedirs(evals_dir, exist_ok=True)
 out_gts = dataset.get_gts()
 all_res = []
 models = []
-cols = ["model", "features", "retriever", "k"]
+cols = ["model", "features", "retriever", "k", "SC"]
 
 rouge = load("rouge")
 bleu = load("bleu")
@@ -33,6 +33,11 @@ for file in os.listdir(preds_dir):
             features = ":".join(eval(features))
         model = params[0]
 
+        if len(params) == 5:
+            sc = re.findall(r'\((.*?)\)', params[-2])[0]
+        else:
+            sc = 1
+
         with open(os.path.join(preds_dir, file), "r") as f:
             preds = json.load(f)["golds"]
             preds = [p["output"] for p in preds]
@@ -40,12 +45,13 @@ for file in os.listdir(preds_dir):
         if len(preds) != len(out_gts):
             continue
 
-        print(model, retriever, features, k)
+        print(model, retriever, features, k, sc)
         res_dict = {    
             "model": model,
             "features": features,
             "retriever": retriever,
             "k": k,
+            "SC": sc
         }
         rouge_results = rouge.compute(predictions=preds, references=out_gts)
         bleu_results = bleu.compute(predictions=preds, references=[[gt] for gt in out_gts])
