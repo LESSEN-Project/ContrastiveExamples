@@ -18,6 +18,7 @@ class Retriever:
         self._init_model()
 
     def _init_model(self):
+
         if self.model == "contriever":
             self.retr_model = SentenceTransformer("nishimoto/contriever-sentencetransformer", device=self.device)
         elif self.model == "dpr":
@@ -26,6 +27,7 @@ class Retriever:
             self.retr_model = SentenceTransformer(self.model, device=self.device)
 
     def check_file(self):
+
         file_path = os.path.join(self.save_loc, f"{self.dataset.tag}_{self.model}.json")
         if os.path.exists(file_path):
             with open(file_path, "r") as f:
@@ -36,28 +38,42 @@ class Retriever:
         return all_idxs
     
     def save_file(self, obj):
+
         file_path = os.path.join(self.save_loc, f"{self.dataset.tag}_{self.model}.json")
         with open(file_path, "w") as f:
             json.dump(obj, f)
 
     def get_retrieval_results(self, queries: List[str], retr_texts: List[List[str]]) -> List[List[int]]:
+
         return self._neural_retrieval(queries, retr_texts)
 
     def _encode(self, docs):
+
         if not isinstance(docs, np.ndarray):
             return self.retr_model.encode(docs)
         else:
             return docs
 
     def _neural_retrieval(self, queries: List[str], docs: List[str]):
+
         query_embeds = self._encode(queries)
         doc_embeds = self._encode(docs)
         similarities = self.retr_model.similarity(query_embeds, doc_embeds).numpy().squeeze().tolist()
         sorted_idxs = np.argsort(similarities)[::-1].tolist()
         if isinstance(similarities, float):
             similarities = [similarities]
+            
         return similarities, sorted_idxs
-    
+
+    def semantic_consensus_weighting(self, outputs):
+
+        embeds = self._encode(outputs)
+        similarity_matrix = self.retr_model.similarity(embeds, embeds)   
+        aggregated_scores = similarity_matrix.sum(axis=1)
+        best_response_index = np.argmax(aggregated_scores)
+        
+        return outputs[best_response_index]
+
     def contrastive_retrieval(self, queries, retr_texts, retr_gts, num_ce, ce_k):
 
         _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()
@@ -87,6 +103,7 @@ class Retriever:
         return all_ce_examples
 
     def get_context(self, queries: List[str], retr_texts: List[List[str]], retr_gts: List[List[str]], k: str) -> List[List[str]]:
+
         all_idxs = self.check_file()
         all_examples = []
         _, retr_gt_name, retr_prompt_name = self.dataset.get_var_names()

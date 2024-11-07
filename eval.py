@@ -4,7 +4,7 @@ import os
 import re
 from evaluate import load
 
-from utils import get_args, parse_dataset
+from utils import get_args, parse_dataset, parse_cot_output
 
 args = get_args()
 dataset = parse_dataset(args.dataset)
@@ -17,7 +17,7 @@ os.makedirs(evals_dir, exist_ok=True)
 out_gts = dataset.get_gts()
 all_res = []
 models = []
-cols = ["model", "features", "retriever", "k", "SC"]
+cols = ["model", "features", "retriever", "k", "CoT", "SC"]
 
 rouge = load("rouge")
 bleu = load("bleu")
@@ -33,10 +33,12 @@ for file in os.listdir(preds_dir):
             features = ":".join(eval(features))
         model = params[0]
 
-        if len(params) == 5:
+        if len(params) > 4:
             sc = re.findall(r'\((.*?)\)', params[-2])[0]
+            cot = bool(re.findall(r'\((.*?)\)', params[-3])[0])
         else:
             sc = 1
+            cot = False
 
         with open(os.path.join(preds_dir, file), "r") as f:
             preds = json.load(f)["golds"]
@@ -45,12 +47,16 @@ for file in os.listdir(preds_dir):
         if len(preds) != len(out_gts):
             continue
 
-        print(model, retriever, features, k, sc)
+        if cot:
+            preds = [parse_cot_output(p) for p in preds]
+
+        print(model, retriever, features, k, cot, sc)
         res_dict = {    
             "model": model,
             "features": features,
             "retriever": retriever,
             "k": k,
+            "CoT": cot,
             "SC": sc
         }
         rouge_results = rouge.compute(predictions=preds, references=out_gts)
