@@ -4,7 +4,6 @@ import json
 import sys
 import subprocess
 import copy
-import collections
 
 import torch 
 
@@ -24,7 +23,7 @@ os.makedirs(pred_path, exist_ok=True)
 if dataset.name == "lamp":
     ids = dataset.get_ids()    
 
-LLMs = ["LLAMA-3.2-3B", "LLAMA-3.2-11B-UNSLOTH-4bit", "GEMMA-2-9B", "GEMMA-2-27B"]
+LLMs = ["MINISTRAL-8B-INSTRUCT", "LLAMA-3.2-3B", "LLAMA-3.1-8B", "GEMMA-2-2B", "GEMMA-2-9B", "GEMMA-2-27B"]
 # LLMs = ["GPT-4o-mini"]
 
 queries, retr_texts, retr_gts = dataset.get_retr_data() 

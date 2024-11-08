@@ -1,8 +1,6 @@
 import configparser
 import os
 from pathlib import Path
-import sys
-import time
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -10,6 +8,7 @@ from huggingface_hub import login
 import tiktoken
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, logging
 logging.set_verbosity_error()
+
 from openai import OpenAI
 from anthropic import Anthropic
 import google.generativeai as genai
@@ -33,6 +32,7 @@ class LLM:
         self.model = self.init_model()
 
     def get_model_cfg(self):
+
         config = configparser.ConfigParser()
         config.read(os.path.join(Path(__file__).absolute().parent, "model_config.cfg"))
         return config
@@ -77,12 +77,14 @@ class LLM:
             if self.family in ["MISTRAL", "GEMMA"]:
                 if len(prompt) > 1:
                     prompt = [{"role": "user", "content": "\n".join([turn["content"] for turn in prompt])}]
+
             pipe = pipeline("text-generation", model=self.model, tokenizer=self.tokenizer, **gen_params)
             response = pipe(prompt)[0]["generated_text"][-1]["content"]
 
         return response
 
     def get_avail_space(self, prompt):
+
         avail_space = self.context_length - self.gen_params[self.name_token_var] - self.count_tokens(prompt)
         if avail_space <= 0:
             return None
@@ -90,6 +92,7 @@ class LLM:
             return avail_space   
         
     def trunc_chat_history(self, chat_history, hist_dedic_space=0.2):
+
         hist_dedic_space = int(self.context_length*0.2)
         total_hist_tokens = sum(self.count_tokens(tm['content']) for tm in chat_history)
         while total_hist_tokens > hist_dedic_space:
@@ -98,6 +101,7 @@ class LLM:
         return chat_history 
        
     def count_tokens(self, prompt):
+
         if isinstance(prompt, list):
             prompt = "\n".join([turn["content"] for turn in prompt])
         if self.family == "GPT":
@@ -111,6 +115,7 @@ class LLM:
             return len(self.tokenizer(prompt).input_ids)
         
     def prepare_context(self, prompt, query, context, chat_history=[]):
+
         if chat_history:
             chat_history = self.trunc_chat_history(chat_history)
         if isinstance(prompt, str):
@@ -129,6 +134,7 @@ class LLM:
             return -1
         
     def get_model_type(self):
+
         if self.model_name.endswith("AWQ"):
             return "AWQ"
         elif self.model_name.endswith("PPLX"):
@@ -143,6 +149,7 @@ class LLM:
             return "default"
         
     def init_tokenizer(self):
+
         if self.model_type in ["AWQ", "GPTQ", "PPLX", "GROQ", "TGTR"]:
             return AutoTokenizer.from_pretrained(self.cfg.get("tokenizer"), use_fast=True)
         elif self.model_type in ["proprietary"]:
@@ -151,6 +158,7 @@ class LLM:
             return AutoTokenizer.from_pretrained(self.repo_id, use_fast=True)
             
     def get_gen_params(self, gen_params):
+
         if self.family == "GEMINI":
             self.name_token_var = "max_output_tokens"
         elif self.model_type in ["PPLX", "GROQ", "TGTR", "proprietary"]:
@@ -168,6 +176,7 @@ class LLM:
         return gen_params
     
     def get_model_params(self, model_params):
+
         if model_params is None:
             if self.model_type == "PPLX":
                 return {
@@ -183,7 +192,7 @@ class LLM:
                 return {
                     "base_url": "https://api.together.xyz/v1",
                     "api_key": os.getenv("TOGETHER_API_KEY")
-                }
+                }                           
             elif self.family == "CLAUDE":
                 return {
                     "api_key": os.getenv("ANTHROPIC_API_KEY")
@@ -202,13 +211,14 @@ class LLM:
             return model_params
     
     def init_model(self):
+
         if self.family == "CLAUDE":
             return Anthropic(**self.model_params)
         elif self.family == "GPT" or self.model_type in ["PPLX", "TGTR", "GROQ"]:
             return OpenAI(**self.model_params)       
         elif self.family == "GEMINI":
             genai.configure(**self.model_params)
-            return genai.GenerativeModel(self.repo_id)       
+            return genai.GenerativeModel(self.repo_id)      
         else: 
             return AutoModelForCausalLM.from_pretrained(
                     self.repo_id,
